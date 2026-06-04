@@ -16,7 +16,9 @@ import {
   TextInputBuilder,
   TextInputStyle
 } from 'discord.js';
-import sodium from 'libsodium-wrappers';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const sodium = require('libsodium-wrappers');
 import { ENV } from './env.js';
 import { withDb } from './storage.js';
 import { buildMB01WelcomeEmbed, handleMB01Message, getKeySignature, isKeyRateLimited, getCurrentKeyIndex, STAND_NAMES } from './mb01.js';
