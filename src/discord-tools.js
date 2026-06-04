@@ -3,16 +3,16 @@ import { readDb } from './storage.js';
 import { ENV } from './env.js';
 
 const STAND_NAMES = [
-  'Star Platinum',
-  'The World',
-  'Crazy Diamond',
-  'Killer Queen',
-  'Gold Experience',
-  'Stone Free',
-  'Soft & Wet',
-  'King Crimson',
-  'Silver Chariot',
-  'Purple Haze'
+  'Highway Star',
+  'Metallica',
+  'Diver Down',
+  'Weather Report',
+  'Catch the Rainbow',
+  'Paisley Park',
+  'White Album',
+  'Enigma',
+  'Wonder of U',
+  'Born This Way'
 ];
 
 function getKeySignature(key) {
