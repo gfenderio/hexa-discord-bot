@@ -1,5 +1,11 @@
 import { ChannelType, PermissionFlagsBits } from 'discord.js';
+import fs from 'fs';
+import path from 'path';
+import { exec } from 'child_process';
+import util from 'util';
 
+const execPromise = util.promisify(exec);
+const WORKSPACE_DIR = '/root/workspaces/la-stazione';
 export const MB01_TOOLS_DECLARATION = [
   {
     type: 'function',
@@ -133,6 +139,52 @@ export const MB01_TOOLS_DECLARATION = [
         additionalProperties: false
       }
     }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'read_file',
+      description: 'Membaca isi file dari dalam repositori (workspace). Parameter path harus merupakan path relatif dari root proyek.',
+      parameters: {
+        type: 'object',
+        properties: {
+          filePath: { type: 'string', description: 'Path relatif file, misal: src/index.js' }
+        },
+        required: ['filePath'],
+        additionalProperties: false
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'write_file',
+      description: 'Menulis konten ke dalam file (akan menimpa file jika sudah ada) di workspace.',
+      parameters: {
+        type: 'object',
+        properties: {
+          filePath: { type: 'string', description: 'Path relatif file' },
+          content: { type: 'string', description: 'Isi kode atau teks lengkap' }
+        },
+        required: ['filePath', 'content'],
+        additionalProperties: false
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'run_bash_sandbox',
+      description: 'Menjalankan perintah bash/terminal di dalam Docker Sandbox (termasuk perintah Git, npm, dsb). Workspace di-mount di /workspace.',
+      parameters: {
+        type: 'object',
+        properties: {
+          command: { type: 'string', description: 'Perintah terminal yang akan dijalankan' }
+        },
+        required: ['command'],
+        additionalProperties: false
+      }
+    }
   }
 ];
 
@@ -246,11 +298,30 @@ export async function executeMB01Tool(name, args, { guild }) {
       }
 
       case 'get_api_pool_status': {
-        return {
-          status: 'Manajemen kuota dan API Key sekarang diambil alih oleh n9router secara terpusat.',
-          dashboardUrl: 'http://68.183.176.67:20128',
-          message: 'Silakan buka dashboard n9router di browser untuk melihat sisa kuota dan status Stand.'
-        };
+        return 'Sistem rotasi dan limitasi API Key sekarang sepenuhnya ditangani oleh n9router secara transparan. Server aman dari limit 429.';
+      }
+      case 'read_file': {
+        const fullPath = path.join(WORKSPACE_DIR, args.filePath);
+        if (!fullPath.startsWith(WORKSPACE_DIR)) throw new Error('Path traversal detected');
+        if (!fs.existsSync(fullPath)) throw new Error('File not found');
+        const content = await fs.promises.readFile(fullPath, 'utf8');
+        return `Isi file ${args.filePath}:\n\n${content}`;
+      }
+      case 'write_file': {
+        const fullPath = path.join(WORKSPACE_DIR, args.filePath);
+        if (!fullPath.startsWith(WORKSPACE_DIR)) throw new Error('Path traversal detected');
+        await fs.promises.mkdir(path.dirname(fullPath), { recursive: true });
+        await fs.promises.writeFile(fullPath, args.content, 'utf8');
+        return `File ${args.filePath} berhasil ditulis.`;
+      }
+      case 'run_bash_sandbox': {
+        const dockerCmd = `docker run --rm -v ${WORKSPACE_DIR}:/workspace -v /root/.ssh:/root/.ssh:ro -v /root/.gitconfig:/root/.gitconfig:ro -e GIT_SSH_COMMAND="ssh -i /root/.ssh/stzn_bot_rsa -o IdentitiesOnly=yes" -w /workspace node:20 /bin/bash -c ${JSON.stringify(args.command)}`;
+        try {
+          const { stdout, stderr } = await execPromise(dockerCmd, { timeout: 30000 });
+          return `STDOUT:\n${stdout}\nSTDERR:\n${stderr}`;
+        } catch (e) {
+          return `ERROR:\n${e.message}\nSTDOUT:\n${e.stdout}\nSTDERR:\n${e.stderr}`;
+        }
       }
 
       default:
