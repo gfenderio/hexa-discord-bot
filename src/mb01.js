@@ -259,7 +259,7 @@ async function initChatSession({ thread, modelType, signature }) {
   // System instruction (basecamp persona only — arcade removed)
   let additionalSkills = '';
   try {
-    additionalSkills = fs.readFileSync(path.join(process.cwd(), 'skills.md'), 'utf-8');
+    additionalSkills = fs.readFileSync(path.join(process.cwd(), 'skills', 'skills.md'), 'utf-8');
   } catch { /* optional */ }
 
   const systemInstructionText =
