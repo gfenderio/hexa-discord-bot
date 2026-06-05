@@ -1,6 +1,11 @@
 import { EmbedBuilder } from 'discord.js';
 import OpenAI from 'openai';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const HISTORY_FETCH_LIMIT = 40;
 
 const openai = new OpenAI({
@@ -51,6 +56,13 @@ export async function handleNugasMessage({ thread, messageText, topic }) {
 
     const history = [];
 
+    let additionalSkills = '';
+    try {
+      additionalSkills = fs.readFileSync(path.join(__dirname, '..', 'skills', 'skills.md'), 'utf-8');
+    } catch (e) {
+      console.error('Failed to load skills:', e.message);
+    }
+
     history.push({
       role: 'system',
       content: `Kamu adalah "Hexa AI", asisten belajar cerdas untuk kelompok studi UT Hexa.
@@ -58,6 +70,9 @@ Topik diskusi thread ini adalah: "${topic || 'Umum'}".
 Tugasmu adalah menjawab pertanyaan mahasiswa secara interaktif, ramah, terstruktur, dan mudah dimengerti.
 Gunakan emoji yang relevan untuk mempercantik tampilan jawaban.
 Jika ditanya rumus atau soal perhitungan/koding, berikan langkah-langkah penyelesaian secara detail.
+
+${additionalSkills}
+
 Gunakan Bahasa Indonesia yang sopan dan santai khas mahasiswa.
 Batasi panjang jawaban agar tidak melebihi 1800 karakter supaya pas di Discord.`
     });

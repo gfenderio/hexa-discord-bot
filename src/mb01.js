@@ -57,6 +57,10 @@ async function sendLongMessage(thread, text) {
   }
 }
 
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 export async function handleMB01Message({ thread, messageText, aiModel = 'lite', topic = 'mb01' }) {
   try {
     await thread.sendTyping();
@@ -71,8 +75,10 @@ export async function handleMB01Message({ thread, messageText, aiModel = 'lite',
     // System Instruction
     let additionalSkills = '';
     try {
-      additionalSkills = fs.readFileSync(path.join(process.cwd(), 'skills', 'skills.md'), 'utf-8');
-    } catch { /* optional */ }
+      additionalSkills = fs.readFileSync(path.join(__dirname, '..', 'skills', 'skills.md'), 'utf-8');
+    } catch (e) { 
+      console.error('Failed to load skills:', e.message);
+    }
 
     history.push({
       role: 'system',
