@@ -99,8 +99,8 @@ ${additionalSkills}`
 
     history.push({ role: 'user', content: messageText });
 
-    // Map `aiModel` string to n9router supported models (using Vertex AI syntax from n9router docs)
-    const modelToUse = aiModel === 'pro' ? 'vertex/gemini-1.5-pro-preview' : 'vertex/gemini-2.5-flash';
+    // Map `aiModel` string to n9router supported models
+    const modelToUse = aiModel === 'pro' ? 'gemini/gemini-2.5-pro' : 'gemini/gemini-2.5-flash';
 
     let iterations = 0;
     while (iterations < MAX_TOOL_ITERATIONS) {

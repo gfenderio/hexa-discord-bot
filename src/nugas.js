@@ -76,7 +76,7 @@ Batasi panjang jawaban agar tidak melebihi 1800 karakter supaya pas di Discord.`
     history.push({ role: 'user', content: messageText });
 
     const response = await openai.chat.completions.create({
-      model: 'vertex/gemini-2.5-flash',
+      model: 'gemini/gemini-2.5-flash',
       messages: history,
       temperature: 0.7
     });
