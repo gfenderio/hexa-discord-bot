@@ -1,121 +1,137 @@
 import { ChannelType, PermissionFlagsBits } from 'discord.js';
-import { readDb } from './storage.js';
-import { ENV } from './env.js';
-
-const STAND_NAMES = [
-  'Highway Star',
-  'Metallica',
-  'Diver Down',
-  'Weather Report',
-  'Catch the Rainbow',
-  'Paisley Park',
-  'White Album',
-  'Enigma',
-  'Wonder of U',
-  'Born This Way'
-];
-
-function getKeySignature(key) {
-  if (!key || key.length <= 15) return key || 'unknown';
-  return `${key.slice(0, 12)}...${key.slice(-6)}`;
-}
 
 export const MB01_TOOLS_DECLARATION = [
   {
-    name: 'get_server_info',
-    description: 'Ambil info server (nama, roles) dan daftar channel/kategori saat ini agar AI tahu apa yang ada di server sebelum merombak.',
-    parameters: {
-      type: 'OBJECT',
-      properties: {}
+    type: 'function',
+    function: {
+      name: 'get_server_info',
+      description: 'Ambil info server (nama, roles) dan daftar channel/kategori saat ini agar AI tahu apa yang ada di server sebelum merombak.',
+      parameters: {
+        type: 'object',
+        properties: {},
+        additionalProperties: false
+      }
     }
   },
   {
-    name: 'rename_server',
-    description: 'Ubah nama server Discord.',
-    parameters: {
-      type: 'OBJECT',
-      properties: {
-        newName: { type: 'STRING', description: 'Nama baru untuk server' }
-      },
-      required: ['newName']
+    type: 'function',
+    function: {
+      name: 'rename_server',
+      description: 'Ubah nama server Discord.',
+      parameters: {
+        type: 'object',
+        properties: {
+          newName: { type: 'string', description: 'Nama baru untuk server' }
+        },
+        required: ['newName'],
+        additionalProperties: false
+      }
     }
   },
   {
-    name: 'create_category',
-    description: 'Buat kategori channel baru.',
-    parameters: {
-      type: 'OBJECT',
-      properties: {
-        name: { type: 'STRING', description: 'Nama kategori baru' }
-      },
-      required: ['name']
+    type: 'function',
+    function: {
+      name: 'create_category',
+      description: 'Buat kategori channel baru.',
+      parameters: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'Nama kategori baru' }
+        },
+        required: ['name'],
+        additionalProperties: false
+      }
     }
   },
   {
-    name: 'create_text_channel',
-    description: 'Buat text channel baru di bawah kategori tertentu.',
-    parameters: {
-      type: 'OBJECT',
-      properties: {
-        name: { type: 'STRING', description: 'Nama channel (huruf kecil, tanpa spasi)' },
-        categoryId: { type: 'STRING', description: 'ID Kategori (opsional)' }
-      },
-      required: ['name']
+    type: 'function',
+    function: {
+      name: 'create_text_channel',
+      description: 'Buat text channel baru di bawah kategori tertentu.',
+      parameters: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'Nama channel (huruf kecil, tanpa spasi)' },
+          categoryId: { type: 'string', description: 'ID Kategori (opsional)' }
+        },
+        required: ['name'],
+        additionalProperties: false
+      }
     }
   },
   {
-    name: 'archive_channel',
-    description: 'Arsipkan channel lama: sembunyikan dari publik (hanya bisa dilihat role captain/admin kamboja/admin), dan pindahkan ke kategori arsip.',
-    parameters: {
-      type: 'OBJECT',
-      properties: {
-        channelId: { type: 'STRING', description: 'ID channel yang akan diarsipkan' },
-        archiveCategoryId: { type: 'STRING', description: 'ID kategori arsip tempat channel ini akan dipindah (opsional)' }
-      },
-      required: ['channelId']
+    type: 'function',
+    function: {
+      name: 'archive_channel',
+      description: 'Arsipkan channel lama: sembunyikan dari publik (hanya bisa dilihat role captain/admin kamboja/admin), dan pindahkan ke kategori arsip.',
+      parameters: {
+        type: 'object',
+        properties: {
+          channelId: { type: 'string', description: 'ID channel yang akan diarsipkan' },
+          archiveCategoryId: { type: 'string', description: 'ID kategori arsip tempat channel ini akan dipindah (opsional)' }
+        },
+        required: ['channelId'],
+        additionalProperties: false
+      }
     }
   },
   {
-    name: 'create_role',
-    description: 'Buat role (peran) baru di server dengan nama dan warna tertentu.',
-    parameters: {
-      type: 'OBJECT',
-      properties: {
-        name: { type: 'STRING', description: 'Nama role baru' },
-        color: { type: 'STRING', description: 'Kode warna HEX (misal: "#FF0000" atau "0xFF0000", opsional)' }
-      },
-      required: ['name']
+    type: 'function',
+    function: {
+      name: 'create_role',
+      description: 'Buat role (peran) baru di server dengan nama dan warna tertentu.',
+      parameters: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'Nama role baru' },
+          color: { type: 'string', description: 'Kode warna HEX (misal: "#FF0000" atau "0xFF0000", opsional)' }
+        },
+        required: ['name'],
+        additionalProperties: false
+      }
     }
   },
   {
-    name: 'rename_role',
-    description: 'Ubah nama role (peran) yang sudah ada di server.',
-    parameters: {
-      type: 'OBJECT',
-      properties: {
-        roleId: { type: 'STRING', description: 'ID role yang akan diubah namanya' },
-        newName: { type: 'STRING', description: 'Nama baru untuk role tersebut' }
-      },
-      required: ['roleId', 'newName']
+    type: 'function',
+    function: {
+      name: 'rename_role',
+      description: 'Ubah nama role (peran) yang sudah ada di server.',
+      parameters: {
+        type: 'object',
+        properties: {
+          roleId: { type: 'string', description: 'ID role yang akan diubah namanya' },
+          newName: { type: 'string', description: 'Nama baru untuk role tersebut' }
+        },
+        required: ['roleId', 'newName'],
+        additionalProperties: false
+      }
     }
   },
   {
-    name: 'delete_role',
-    description: 'Hapus role (peran) yang tidak terpakai dari server.',
-    parameters: {
-      type: 'OBJECT',
-      properties: {
-        roleId: { type: 'STRING', description: 'ID role yang akan dihapus' }
-      },
-      required: ['roleId']
+    type: 'function',
+    function: {
+      name: 'delete_role',
+      description: 'Hapus role (peran) yang tidak terpakai dari server.',
+      parameters: {
+        type: 'object',
+        properties: {
+          roleId: { type: 'string', description: 'ID role yang akan dihapus' }
+        },
+        required: ['roleId'],
+        additionalProperties: false
+      }
     }
   },
   {
-    name: 'get_api_pool_status',
-    description: 'Dapatkan status kuota harian (Flash & Pro), tingkat keberhasilan, sisa waktu cooldown, dan kecepatan respon rata-rata dari ke-5 Stand API Key Gemini saat ini.',
-    parameters: {
-      type: 'OBJECT',
-      properties: {}
+    type: 'function',
+    function: {
+      name: 'get_api_pool_status',
+      description: 'Dapatkan info status bahwa manajemen kuota sekarang diurus oleh n9router.',
+      parameters: {
+        type: 'object',
+        properties: {},
+        additionalProperties: false
+      }
     }
   }
 ];
@@ -172,7 +188,6 @@ export async function executeMB01Tool(name, args, { guild }) {
         const channelToArchive = await guild.channels.fetch(args.channelId);
         if (!channelToArchive) throw new Error('Channel not found');
 
-        // Cari role captain dan admin kamboja (case insensitive)
         const roles = await guild.roles.fetch();
         const allowedRoleIds = [];
         for (const role of roles.values()) {
@@ -182,7 +197,6 @@ export async function executeMB01Tool(name, args, { guild }) {
           }
         }
 
-        // Setup permissions
         const permissionOverwrites = [
           {
             id: guild.roles.everyone.id,
@@ -232,55 +246,15 @@ export async function executeMB01Tool(name, args, { guild }) {
       }
 
       case 'get_api_pool_status': {
-        const db = readDb();
-        const stats = db.apiKeyStats || {};
-        const todayUTC = new Date().toISOString().slice(0, 10);
-        
-        const poolInfo = ENV.GEMINI_API_KEYS.map((key, i) => {
-          const sig = getKeySignature(key);
-          const name = STAND_NAMES[i] || `Stand #${i + 1}`;
-          const keyStats = stats[sig] || {};
-          
-          let rateLimited = false;
-          let cooldownRemainingSecs = 0;
-          if (keyStats.rateLimitedUntil && new Date(keyStats.rateLimitedUntil) > new Date()) {
-            rateLimited = true;
-            cooldownRemainingSecs = Math.max(0, Math.round((new Date(keyStats.rateLimitedUntil) - new Date()) / 1000));
-          }
-          
-          let dailyFlash = keyStats.dailyFlashCalls || 0;
-          let dailyPro = keyStats.dailyProCalls || 0;
-          if (keyStats.lastResetDate !== todayUTC) {
-            dailyFlash = 0;
-            dailyPro = 0;
-          }
-
-          const successCount = keyStats.successCount || 0;
-          const errorCount = keyStats.errorCount || 0;
-          const total = successCount + errorCount;
-          const accuracy = total > 0 ? `${((successCount / total) * 100).toFixed(1)}%` : '100%';
-
-          return {
-            standName: name,
-            status: rateLimited ? `Rate Limited (Cooldown: ${cooldownRemainingSecs}s)` : 'Active (Ready)',
-            dailyFlashQuotaUsed: `${dailyFlash} / 1500`,
-            dailyProQuotaUsed: `${dailyPro} / 50`,
-            successRate: accuracy,
-            avgResponseSpeedSecs: keyStats.avgLatency ? `${(keyStats.avgLatency / 1000).toFixed(2)}s` : 'N/A'
-          };
-        });
-
         return {
-          status: 'success',
-          gatewayStatus: 'ONLINE',
-          timezone: 'UTC',
-          currentDateUTC: todayUTC,
-          keyPool: poolInfo
+          status: 'Manajemen kuota dan API Key sekarang diambil alih oleh n9router secara terpusat.',
+          dashboardUrl: 'http://68.183.176.67:20128',
+          message: 'Silakan buka dashboard n9router di browser untuk melihat sisa kuota dan status Stand.'
         };
       }
 
       default:
-        return { error: `Tool ${name} not implemented` };
+        return { error: `Unknown tool: ${name}` };
     }
   } catch (error) {
     return { error: error.message };

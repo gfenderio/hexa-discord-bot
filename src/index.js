@@ -21,7 +21,7 @@ const require = createRequire(import.meta.url);
 const sodium = require('libsodium-wrappers');
 import { ENV } from './env.js';
 import { withDb } from './storage.js';
-import { buildMB01WelcomeEmbed, handleMB01Message, getKeySignature, isKeyRateLimited, getCurrentKeyIndex, STAND_NAMES } from './mb01.js';
+import { buildMB01WelcomeEmbed, handleMB01Message } from './mb01.js';
 import { handleMusicButton, handlePlayCommand } from './music/handlers.js';
 
 const enableMessageContent = String(process.env.ENABLE_MESSAGE_CONTENT ?? '')
@@ -153,178 +153,26 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.commandName === 'keys') {
-      await interaction.deferReply({ ephemeral: false });
-
-      const view = interaction.options.getString('view') ?? 'today';
-
-      let apiKeyStats = {};
-      let apiKeyHistory = {};
-      withDb((db) => {
-        apiKeyStats = db.apiKeyStats ?? {};
-        apiKeyHistory = db.apiKeyHistory ?? {};
-        return db;
-      });
-
-      // ── Weekly view ─────────────────────────────────────
-      if (view === 'week') {
-        const days = [];
-        for (let i = 6; i >= 0; i--) {
-          const d = new Date();
-          d.setUTCDate(d.getUTCDate() - i);
-          days.push(d.toISOString().slice(0, 10));
-        }
-        const todayUTC = new Date().toISOString().slice(0, 10);
-
-        const weekEmbed = new EmbedBuilder()
-          .setTitle('📅 Weekly Usage Report — Moody Blues Key Pool')
-          .setColor(0x0F172A)
-          .setDescription([
-            `📊 **Periode:** \`${days[0]}\` → \`${days[6]}\` (UTC)`,
-            `🎭 **Total Stands:** \`${ENV.GEMINI_API_KEYS.length}\``,
-            '────────────────────────────────────────'
-          ].join('\n'))
-          .setFooter({ text: 'Weekly Pool Usage • Moody Blues' })
-          .setTimestamp();
-
-        // Aggregate per-day totals across all keys
-        let totalFlashWeek = 0;
-        let totalProWeek = 0;
-
-        for (let i = 0; i < ENV.GEMINI_API_KEYS.length; i++) {
-          const key = ENV.GEMINI_API_KEYS[i];
-          const sig = getKeySignature(key);
-          const standName = STAND_NAMES[i] || `Stand #${i + 1}`;
-          const history = apiKeyHistory[sig] || {};
-          const todayStats = apiKeyStats[sig] || {};
-
-          let flashSum = 0;
-          let proSum = 0;
-          const sparkline = days.map((day) => {
-            let flash = 0, pro = 0;
-            if (day === todayUTC) {
-              if (todayStats.lastResetDate === todayUTC) {
-                flash = todayStats.dailyFlashCalls || 0;
-                pro = todayStats.dailyProCalls || 0;
-              }
-            } else if (history[day]) {
-              flash = history[day].flash || 0;
-              pro = history[day].pro || 0;
-            }
-            flashSum += flash;
-            proSum += pro;
-            const total = flash + pro;
-            // Simple bar
-            if (total === 0) return '▁';
-            if (total < 50) return '▂';
-            if (total < 200) return '▃';
-            if (total < 500) return '▅';
-            if (total < 1000) return '▆';
-            return '▇';
-          }).join('');
-
-          totalFlashWeek += flashSum;
-          totalProWeek += proSum;
-
-          weekEmbed.addFields({
-            name: `🎭 ${standName}`,
-            value: [
-              `\`${sparkline}\``,
-              `⚡ Flash: \`${flashSum}\` calls • 🧠 Pro: \`${proSum}\` calls`
-            ].join('\n'),
-            inline: false
-          });
-        }
-
-        weekEmbed.addFields({
-          name: '📈 Pool Total (7 hari)',
-          value: `⚡ Flash: \`${totalFlashWeek}\` • 🧠 Pro: \`${totalProWeek}\` • **Σ** \`${totalFlashWeek + totalProWeek}\` calls`,
-          inline: false
-        });
-
-        await interaction.editReply({ embeds: [weekEmbed] });
-        return;
-      }
-      // ── Today view (default) ────────────────────────────
-
-      let grandTotalCalls = 0;
-      for (let i = 0; i < ENV.GEMINI_API_KEYS.length; i++) {
-        const sig = getKeySignature(ENV.GEMINI_API_KEYS[i]);
-        const s = apiKeyStats[sig] || { useCount: 0 };
-        grandTotalCalls += (s.useCount || 0);
-      }
-
       const embed = new EmbedBuilder()
-        .setTitle('🛰️ OpenRouter Gateway: Moody Blues Key Pool')
+        .setTitle('🛰️ n9router Gateway Dashboard')
         .setColor(0x0F172A)
         .setDescription(
           [
-            `🟢 **Gateway Status:** \`ONLINE\``,
-            `⚖️ **Routing System:** Round-robin balancing with proactive rate-limit bypass`,
-            `📊 **Total Key Pool:** \`${ENV.GEMINI_API_KEYS.length}\` Stands | **Cumulative Calls:** \`${grandTotalCalls}\` calls`,
-            `────────────────────────────────────────`
+            `Manajemen 5 API Key Gemini (Stand) sekarang sudah dipindahkan ke sistem **n9router** terpusat yang berjalan non-stop.`,
+            ``,
+            `🔗 **Buka Dashboard Admin:**`,
+            `[http://68.183.176.67:20128](http://68.183.176.67:20128)`,
+            ``,
+            `Di dashboard tersebut, kamu bisa:`,
+            `• Menambahkan/mengubah API Key baru`,
+            `• Melihat statistik penggunaan dan kuota per kunci`,
+            `• Mengubah strategi rotasi (Round-robin / Failover)`
           ].join('\n')
         )
-        .setFooter({ text: 'OpenRouter Pool Monitor • Moody Blues' })
+        .setFooter({ text: 'n9router Pool Monitor • Moody Blues' })
         .setTimestamp();
 
-      const activeIndex = getCurrentKeyIndex();
-
-      for (let i = 0; i < ENV.GEMINI_API_KEYS.length; i++) {
-        const key = ENV.GEMINI_API_KEYS[i];
-        const sig = getKeySignature(key);
-        const standName = STAND_NAMES[i] || `Stand #${i + 1}`;
-        const stats = apiKeyStats[sig] || {
-          useCount: 0,
-          successCount: 0,
-          errorCount: 0,
-          rateLimitedUntil: null,
-          lastUsed: null,
-          avgLatency: 0,
-          dailyFlashCalls: 0,
-          dailyProCalls: 0
-        };
-
-        const isRateLimited = isKeyRateLimited(key);
-        let statusText = '🟢 **Active (Ready)**';
-        if (isRateLimited) {
-          const remainingSecs = Math.max(0, Math.round((new Date(stats.rateLimitedUntil) - new Date()) / 1000));
-          statusText = `🔴 **Rate Limited** *(Cooldown: ${remainingSecs}s)*`;
-        }
-
-        const total = stats.successCount + stats.errorCount;
-        const successRate = total > 0 ? (stats.successCount / total) * 100 : 100;
-        const barLength = 10;
-        const greenBlocks = Math.round((successRate / 100) * barLength);
-        const redBlocks = barLength - greenBlocks;
-        const successBar = '🟩'.repeat(greenBlocks) + '🟥'.repeat(redBlocks);
-
-        const avgLatencyText = stats.avgLatency 
-          ? `⚡ \`${(stats.avgLatency / 1000).toFixed(2)}s\`` 
-          : '⚡ `N/A`';
-
-        const isActivePointer = i === activeIndex ? ' 👈 *(Next up)*' : '';
-        const lastUsedText = stats.lastUsed 
-          ? `<t:${Math.round(new Date(stats.lastUsed).getTime() / 1000)}:R>` 
-          : '*Never*';
-
-        const dailyFlash = stats.dailyFlashCalls || 0;
-        const dailyPro = stats.dailyProCalls || 0;
-
-        embed.addFields({
-          name: `🎭 Stand Key #${i + 1}: **${standName}**${isActivePointer}`,
-          value: [
-            `• **Status:** ${statusText}`,
-            `• **Flash Quota Today:** ⚡ \`${dailyFlash} / 1,500\` calls`,
-            `• **Pro Quota Today:** 🧠 \`${dailyPro} / 50\` calls`,
-            `• **Accuracy:** \`${successRate.toFixed(1)}%\` (${successBar})`,
-            `• **Avg Speed:** ${avgLatencyText}`,
-            `• **Last Active:** ${lastUsedText}`
-          ].join('\n'),
-          inline: false
-        });
-      }
-
-      await interaction.editReply({ embeds: [embed] });
+      await interaction.reply({ embeds: [embed] });
       return;
     }
 
