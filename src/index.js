@@ -23,6 +23,7 @@ import { ENV } from './env.js';
 import { withDb } from './storage.js';
 import { buildMB01WelcomeEmbed, handleMB01Message } from './mb01.js';
 import { handleMusicButton, handlePlayCommand } from './music/handlers.js';
+import { addNotionTask, getPendingTasks } from './notion.js';
 
 const enableMessageContent = String(process.env.ENABLE_MESSAGE_CONTENT ?? '')
   .trim()
@@ -229,7 +230,32 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
 
-
+    if (interaction.commandName === 'task') {
+      await interaction.deferReply();
+      const sub = interaction.options.getSubcommand();
+      
+      if (sub === 'add') {
+        const name = interaction.options.getString('nama');
+        const urgency = interaction.options.getString('urgency') || 'Medium';
+        await addNotionTask(name, urgency, 'Hexa');
+        await interaction.editReply(`✅ Tugas **${name}** [${urgency}] ditambahkan ke Hexa Notion Tracker!`);
+      } else if (sub === 'list') {
+        const tasks = await getPendingTasks('Hexa');
+        if (!tasks.length) {
+          await interaction.editReply('🎉 Tidak ada tugas yang tertunda. Kerja bagus!');
+        } else {
+          const list = tasks.map(t => {
+            const title = t.properties['Task Name'].title[0]?.plain_text || 'Untitled';
+            const urgency = t.properties['Urgency'].select?.name || 'Low';
+            const status = t.properties['Status'].status?.name || 'To-Do';
+            const emoji = urgency === 'High' ? '🔴' : (urgency === 'Medium' ? '🟡' : '🟢');
+            return `${emoji} **${title}** (${status})`;
+          }).join('\n');
+          await interaction.editReply(`📋 **Daftar Tugas Hexa:**\n${list}`);
+        }
+      }
+      return;
+    }
 
     if (interaction.commandName === 'mb01') {
       if (!interaction.inGuild()) {

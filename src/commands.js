@@ -46,5 +46,30 @@ export const COMMANDS = [
         .setName('lagu')
         .setDescription('Judul lagu atau link YouTube')
         .setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName('task')
+    .setDescription('Kelola tugas di Notion Tracker')
+    .addSubcommand(subcommand =>
+      subcommand
+        .setName('add')
+        .setDescription('Tambah tugas baru')
+        .addStringOption(option => option.setName('nama').setDescription('Nama tugas').setRequired(true))
+        .addStringOption(option => 
+          option.setName('urgency')
+            .setDescription('Tingkat urgensi')
+            .setRequired(false)
+            .addChoices(
+              { name: 'High', value: 'High' },
+              { name: 'Medium', value: 'Medium' },
+              { name: 'Low', value: 'Low' }
+            )
+        )
+    )
+    .addSubcommand(subcommand =>
+      subcommand
+        .setName('list')
+        .setDescription('Lihat daftar tugas yang belum selesai')
     )
 ];
