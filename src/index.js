@@ -237,10 +237,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (sub === 'add') {
         const name = interaction.options.getString('nama');
         const urgency = interaction.options.getString('urgency') || 'Medium';
-        await addNotionTask(name, urgency, 'Hexa');
-        await interaction.editReply(`✅ Tugas **${name}** [${urgency}] ditambahkan ke Hexa Notion Tracker!`);
+        await addNotionTask(name, urgency);
+        await interaction.editReply(`✅ Tugas **${name}** [${urgency}] ditambahkan ke Notion Tracker!`);
       } else if (sub === 'list') {
-        const tasks = await getPendingTasks('Hexa');
+        const tasks = await getPendingTasks();
         if (!tasks.length) {
           await interaction.editReply('🎉 Tidak ada tugas yang tertunda. Kerja bagus!');
         } else {

@@ -4,7 +4,7 @@ import { ENV } from './env.js';
 const notion = new Client({ auth: ENV.NOTION_TOKEN });
 const databaseId = ENV.NOTION_DATABASE_ID;
 
-export async function addNotionTask(taskName, urgency = 'Medium', project = 'Hexa') {
+export async function addNotionTask(taskName, urgency = 'Medium') {
   try {
     const response = await notion.pages.create({
       parent: { database_id: databaseId },
@@ -19,9 +19,6 @@ export async function addNotionTask(taskName, urgency = 'Medium', project = 'Hex
         'Status': {
           status: { name: 'To-Do' }
         },
-        'Project': {
-          select: { name: project }
-        },
         'Urgency': {
           select: { name: urgency }
         }
@@ -34,21 +31,13 @@ export async function addNotionTask(taskName, urgency = 'Medium', project = 'Hex
   }
 }
 
-export async function getPendingTasks(project = 'Hexa') {
+export async function getPendingTasks() {
   try {
     const response = await notion.databases.query({
       database_id: databaseId,
       filter: {
-        and: [
-          {
-            property: 'Project',
-            select: { equals: project }
-          },
-          {
-            property: 'Status',
-            status: { does_not_equal: 'Done' }
-          }
-        ]
+        property: 'Status',
+        status: { does_not_equal: 'Done' }
       },
       sorts: [
         {
