@@ -20,6 +20,8 @@ import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const sodium = require('libsodium-wrappers');
 import { ENV } from './env.js';
+import { registerCommands } from './commands.js';
+import { startStandupScheduler } from './schedulers/standup.js';
 import { withDb } from './storage.js';
 import { buildMB01WelcomeEmbed, handleMB01Message } from './mb01.js';
 import { handleMusicButton, handlePlayCommand } from './music/handlers.js';
@@ -38,8 +40,9 @@ const client = new Client({
   ]
 });
 
-client.once(Events.ClientReady, (c) => {
-  console.log(`Ready as ${c.user.tag}`);
+client.once(Events.ClientReady, (readyClient) => {
+  console.log(`Ready! Logged in as ${readyClient.user.tag}`);
+  startStandupScheduler(readyClient);
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
