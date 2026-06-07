@@ -3,9 +3,7 @@ import { SlashCommandBuilder } from 'discord.js';
 export const COMMANDS = [
   new SlashCommandBuilder().setName('ping').setDescription('Check bot status & latency'),
 
-  new SlashCommandBuilder()
-    .setName('keys')
-    .setDescription('Buka dashboard n9router (manajemen & kuota API key)'),
+
 
   new SlashCommandBuilder()
     .setName('standup')
