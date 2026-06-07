@@ -231,6 +231,88 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
 
+    if (interaction.commandName === 'keys') {
+      await interaction.deferReply();
+      try {
+        const fs = await import('fs');
+        const dbPath = '/root/.n9router/db.json';
+        let routerDb = null;
+        if (fs.existsSync(dbPath)) {
+          routerDb = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
+        }
+
+        const embed = new EmbedBuilder()
+          .setTitle('🛰️ OpenRouter Gateway: Moody Blues Key Pool')
+          .setColor(0x0F172A)
+          .setDescription(
+            [
+              `**🟢 Gateway Status:** \`ONLINE\``,
+              `⚖️ **Routing System:** Round-robin balancing with proactive rate-limit bypass`,
+              `📊 **Total Key Pool:** \`5\` Stands`,
+              `\u200b`
+            ].join('\n')
+          )
+          .setFooter({ text: 'n9Router Pool Monitor • Moody Blues' })
+          .setTimestamp();
+
+        const standNames = ['Highway Star', 'Metallica', 'Diver Down', 'Weather Report', 'Catch the Rainbow'];
+        
+        let connections = routerDb?.connections || [];
+        connections = connections.filter(c => c.provider === 'gemini');
+        
+        if (connections.length === 0) {
+          // Fallback if no real DB
+          for (let i = 0; i < 5; i++) {
+             embed.addFields({
+                name: `🎭 Stand Key #${i + 1}: **${standNames[i]}**`,
+                value: '• **Status:** 🔴 **Offline (No n9router DB)**',
+                inline: false
+             });
+          }
+        } else {
+          // Sort by name or ID to maintain order
+          connections.sort((a, b) => a.name.localeCompare(b.name));
+          
+          for (let i = 0; i < Math.min(connections.length, 5); i++) {
+            const conn = connections[i];
+            const standName = standNames[i] || conn.name;
+            
+            let statusText = '🟢 **Active (Ready)**';
+            let barLength = 10;
+            let successBar = '🟩'.repeat(barLength);
+            let successRate = 100;
+
+            if (conn.testStatus === 'unavailable' || conn.errorCode === 429) {
+              const errorText = conn.lastError ? conn.lastError.substring(0, 30) : '429';
+              statusText = `🔴 **Rate Limited** *(Error: ${errorText}...)*`;
+              successBar = '🟥'.repeat(barLength);
+              successRate = 0;
+            }
+
+            const lastUsedText = conn.lastUsedAt 
+              ? `<t:${Math.round(new Date(conn.lastUsedAt).getTime() / 1000)}:R>` 
+              : '*Never*';
+
+            embed.addFields({
+              name: `🎭 Stand Key #${i + 1}: **${standName}**`,
+              value: [
+                `• **Status:** ${statusText}`,
+                `• **Accuracy:** \`${successRate.toFixed(1)}%\` (${successBar})`,
+                `• **Last Active:** ${lastUsedText}`
+              ].join('\n'),
+              inline: false
+            });
+          }
+        }
+
+        await interaction.editReply({ embeds: [embed] });
+      } catch (err) {
+        console.error(err);
+        await interaction.editReply({ content: '❌ Gagal membaca data dari n9router DB.' });
+      }
+      return;
+    }
+
 
 
     if (interaction.commandName === 'standup') {

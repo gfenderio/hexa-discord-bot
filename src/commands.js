@@ -3,7 +3,9 @@ import { SlashCommandBuilder } from 'discord.js';
 export const COMMANDS = [
   new SlashCommandBuilder().setName('ping').setDescription('Check bot status & latency'),
 
-
+  new SlashCommandBuilder()
+    .setName('keys')
+    .setDescription('Cek status riil 5 API Key n9router (Stand Pool)'),
 
   new SlashCommandBuilder()
     .setName('standup')
