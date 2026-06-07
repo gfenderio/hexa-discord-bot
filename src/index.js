@@ -86,33 +86,43 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const base64Prompt = interaction.customId.split(':')[1];
       const prompt = Buffer.from(base64Prompt, 'base64').toString('utf8');
       
-      const seed = Math.floor(Math.random() * 1000000);
-      
-      const modelsToTry = ['flux', 'flux-realism', 'turbo', 'dall-e-3'];
-      let res = null;
-      let finalImageUrl = '';
-
-      for (const model of modelsToTry) {
-        finalImageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?seed=${seed}&nologo=true&model=${model}`;
-        res = await fetch(finalImageUrl);
-        if (res.ok) break;
+      const { ENV } = await import('./env.js');
+      if (!ENV.GEMINI_API_KEY) {
+        throw new Error("GEMINI_API_KEY belum di-set di .env");
       }
 
-      if (!res || !res.ok) {
-        throw new Error(`Pollinations API Error: Semua model sibuk. ${res ? await res.text() : ''}`);
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${ENV.GEMINI_API_KEY}`;
+      const body = {
+        instances: [{ prompt: prompt }],
+        parameters: { sampleCount: 1, aspectRatio: "1:1" }
+      };
+
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      if (!res.ok) {
+        throw new Error(`Google API Error: ${await res.text()}`);
       }
-      
-      const arrayBuffer = await res.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
+
+      const data = await res.json();
+      if (!data.predictions || !data.predictions[0] || !data.predictions[0].bytesBase64Encoded) {
+        throw new Error("Invalid response format dari Google API.");
+      }
+
+      const base64Data = data.predictions[0].bytesBase64Encoded;
+      const buffer = Buffer.from(base64Data, 'base64');
       
       const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder } = await import('discord.js');
-      const attachment = new AttachmentBuilder(buffer, { name: 'regenerated.jpg' });
+      const attachment = new AttachmentBuilder(buffer, { name: 'google_regenerated.png' });
 
       const embed = new EmbedBuilder()
-        .setTitle('🎨 Hasil Generate Gambar (Ulang)')
-        .setImage('attachment://regenerated.jpg')
+        .setTitle('✨ Hasil Generate Gambar (Ulang) via Google')
+        .setImage('attachment://google_regenerated.png')
         .setFooter({ text: `Prompt: ${prompt}` })
-        .setColor(0x5865F2);
+        .setColor(0x0F9D58);
         
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
@@ -124,7 +134,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await interaction.editReply({ embeds: [embed], files: [attachment], components: [row] });
     } catch (e) {
       console.error(e);
-      await interaction.editReply({ content: 'Gagal meregenerate gambar.' });
+      await interaction.editReply({ content: `Gagal meregenerate gambar: ${e.message}` });
     }
     return;
   }
