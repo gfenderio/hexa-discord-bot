@@ -87,7 +87,7 @@ Jika hari ini tidak ada jadwal untuk suatu entitas, jangan masukkan ke array. Ji
               .setTitle(`🚨 PENGINGAT OLAHRAGA: ${item.sport}`)
               .setDescription(`**${item.event}** akan dimulai dalam **15 menit**! Bersiap-siap!`)
               .setTimestamp(eventTime);
-            channel.send({ embeds: [embed] }).catch(console.error);
+            channel.send({ content: '<@419213146209779713>', embeds: [embed] }).catch(console.error);
           }, waitMs);
         } else if (waitMs <= 0 && eventTime > now) {
             // If it's already less than 15 minutes to start, send it immediately!
@@ -96,7 +96,7 @@ Jika hari ini tidak ada jadwal untuk suatu entitas, jangan masukkan ke array. Ji
               .setTitle(`🚨 PENGINGAT OLAHRAGA: ${item.sport}`)
               .setDescription(`**${item.event}** akan SEGERA DIMULAI! Bersiap-siap!`)
               .setTimestamp(eventTime);
-            channel.send({ embeds: [embed] }).catch(console.error);
+            channel.send({ content: '<@419213146209779713>', embeds: [embed] }).catch(console.error);
         }
       }
     }
