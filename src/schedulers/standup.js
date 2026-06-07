@@ -25,9 +25,9 @@ export function startStandupScheduler(client) {
         const status = t.properties['Status']?.status?.name || 'To-Do';
         const emoji = urgency === 'High' ? '🔴' : (urgency === 'Medium' ? '🟡' : '🟢');
         return `${emoji} **${title}** (${status})`;
-      }).join('\\n');
+      }).join('\n');
 
-      const message = `Halo Tuan! Selamat Pagi ☕\\nBerikut adalah rekap tugas **Hexa Tracker** Anda yang belum selesai:\\n\\n${list}`;
+      const message = `Halo Tuan! Selamat Pagi ☕\nBerikut adalah rekap tugas **Hexa Tracker** Anda yang belum selesai:\n\n${list}`;
       await channel.send(message);
 
     } catch (error) {

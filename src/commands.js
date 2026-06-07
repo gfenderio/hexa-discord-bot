@@ -5,17 +5,7 @@ export const COMMANDS = [
 
   new SlashCommandBuilder()
     .setName('keys')
-    .setDescription('Melihat status dan performa dari API Key Gemini')
-    .addStringOption((o) =>
-      o
-        .setName('view')
-        .setDescription('Pilih tampilan (Default: Today)')
-        .addChoices(
-          { name: 'Today (Status real-time)', value: 'today' },
-          { name: 'Week (Rekap 7 hari terakhir)', value: 'week' }
-        )
-        .setRequired(false)
-    ),
+    .setDescription('Buka dashboard n9router (manajemen & kuota API key)'),
 
   new SlashCommandBuilder()
     .setName('standup')

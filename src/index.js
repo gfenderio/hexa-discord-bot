@@ -20,7 +20,6 @@ import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const sodium = require('libsodium-wrappers');
 import { ENV } from './env.js';
-import { registerCommands } from './commands.js';
 import { startStandupScheduler } from './schedulers/standup.js';
 import { withDb } from './storage.js';
 import { buildMB01WelcomeEmbed, handleMB01Message } from './mb01.js';

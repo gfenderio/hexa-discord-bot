@@ -31,6 +31,8 @@ export async function addNotionTask(taskName, urgency = 'Medium') {
   }
 }
 
+const URGENCY_RANK = { High: 0, Medium: 1, Low: 2 };
+
 export async function getPendingTasks() {
   try {
     const response = await notion.databases.query({
@@ -38,15 +40,15 @@ export async function getPendingTasks() {
       filter: {
         property: 'Status',
         status: { does_not_equal: 'Done' }
-      },
-      sorts: [
-        {
-          property: 'Urgency',
-          direction: 'descending'
-        }
-      ]
+      }
     });
-    return response.results;
+    // Notion sort pada tipe select hanya alfabetis (High, Low, Medium),
+    // jadi urutkan berdasarkan prioritas sebenarnya di sini: High > Medium > Low.
+    return response.results.sort((a, b) => {
+      const ua = URGENCY_RANK[a.properties['Urgency']?.select?.name] ?? 3;
+      const ub = URGENCY_RANK[b.properties['Urgency']?.select?.name] ?? 3;
+      return ua - ub;
+    });
   } catch (error) {
     console.error('Error getting tasks from Notion:', error);
     throw error;
