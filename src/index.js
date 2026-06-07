@@ -232,20 +232,27 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.commandName === 'keys') {
+      const keys = (ENV.GEMINI_API_KEY || '').split(',').map(k => k.trim()).filter(Boolean);
+      let desc = '';
+      if (keys.length === 0) {
+        desc = '❌ Tidak ada API Key Gemini yang terkonfigurasi di VPS.';
+      } else {
+        desc = keys.map((k, i) => {
+          const masked = k.substring(0, 10) + '...' + k.slice(-4);
+          return `**Key ${i + 1}:** \`${masked}\``;
+        }).join('\n');
+      }
+
       const embed = new EmbedBuilder()
-        .setTitle('🛰️ n9router Gateway Dashboard')
+        .setTitle('🔑 Status API Key (n9router Pool)')
         .setColor(0x0F172A)
         .setDescription(
           [
-            `Manajemen 5 API Key Gemini (Stand) sekarang sudah dipindahkan ke sistem **n9router** terpusat yang berjalan non-stop.`,
+            `Saat ini ada **${keys.length}** API Key Gemini yang diregistrasikan di server VPS dan dirotasi otomatis.`,
             ``,
-            `🔗 **Buka Dashboard Admin:**`,
-            `[http://68.183.176.67:20128](http://68.183.176.67:20128)`,
+            desc,
             ``,
-            `Di dashboard tersebut, kamu bisa:`,
-            `• Menambahkan/mengubah API Key baru`,
-            `• Melihat statistik penggunaan dan kuota per kunci`,
-            `• Mengubah strategi rotasi (Round-robin / Failover)`
+            `*Catatan: Jika semua key mendapat limit 429, Anda harus menunggu reset kuota harian dari Google atau menambahkan key baru di file .env VPS.*`
           ].join('\n')
         )
         .setFooter({ text: 'n9router Pool Monitor • Moody Blues' })
