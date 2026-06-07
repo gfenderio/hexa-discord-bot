@@ -259,6 +259,21 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
 
+    if (interaction.commandName === 'model') {
+      await interaction.deferReply({ ephemeral: true });
+      const modelName = interaction.options.getString('nama');
+      
+      withDb((db) => {
+        db.userPrefs ??= {};
+        db.userPrefs[interaction.user.id] ??= {};
+        db.userPrefs[interaction.user.id].model = modelName;
+        return db;
+      });
+      
+      await interaction.editReply(`✅ Model default kamu via 9router telah diubah menjadi: **${modelName}**. Mode ini akan dipakai saat kamu memanggil \`/mb01\` tanpa memilih opsi model.`);
+      return;
+    }
+
     if (interaction.commandName === 'mb01') {
       if (!interaction.inGuild()) {
         await interaction.reply({
@@ -294,7 +309,17 @@ client.on(Events.InteractionCreate, async (interaction) => {
         reason: `AI Chatbox for ${interaction.user.tag}`
       });
 
-      const selectedModel = interaction.options.getString('model') || 'lite';
+      let selectedModel = interaction.options.getString('model');
+      if (!selectedModel) {
+        withDb((db) => {
+          if (db.userPrefs?.[interaction.user.id]?.model) {
+            selectedModel = db.userPrefs[interaction.user.id].model;
+          }
+          return db;
+        });
+      }
+      selectedModel = selectedModel || 'lite';
+      
       withDb((db) => {
         db.mb01Threads ??= {};
         db.mb01Threads[thread.id] = {
@@ -371,7 +396,8 @@ client.on(Events.MessageCreate, async (message) => {
     if (!metaMb01) return;
 
     const text = message.content?.trim() ?? '';
-    if (!text) return;
+    const hasAttachments = message.attachments.size > 0;
+    if (!text && !hasAttachments) return;
 
     if (text.toLowerCase() === 'stop') {
       await message.reply('🛑 **Menutup sesi...** Thread ini akan dihapus otomatis dalam 5 detik agar server tetap bersih dan rapi.');
@@ -389,6 +415,7 @@ client.on(Events.MessageCreate, async (message) => {
       await handleMB01Message({
         thread: message.channel,
         messageText: text,
+        messageAttachments: message.attachments,
         aiModel: metaMb01.model || 'lite',
         topic: metaMb01.topic
       });

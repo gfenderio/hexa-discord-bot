@@ -35,10 +35,16 @@ export function buildMB01WelcomeEmbed({ user, avatarUrl }) {
 
 function discordizeMarkdown(text) {
   if (!text) return text;
+  
+  text = text.replace(/<thought>[\s\S]*?<\/thought>/g, '');
+  text = text.replace(/<plan>[\s\S]*?<\/plan>/g, '');
+  text = text.replace(/<tool_code>[\s\S]*?<\/tool_code>/g, '');
+
   return text
     .replace(/^[ \t]{0,3}#{1,6}[ \t]+(.+?)[ \t]*#*[ \t]*$/gm, '**$1**')
     .replace(/^~~~(\w*)?$/gm, '```$1')
-    .replace(/^~~~$/gm, '```');
+    .replace(/^~~~$/gm, '```')
+    .trim();
 }
 
 function diagnoseError(error) {
@@ -61,7 +67,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export async function handleMB01Message({ thread, messageText, aiModel = 'lite', topic = 'mb01' }) {
+export async function handleMB01Message({ thread, messageText, messageAttachments, aiModel = 'lite', topic = 'mb01' }) {
   try {
     await thread.sendTyping();
 
@@ -94,19 +100,78 @@ ${additionalSkills}`
 
     for (const msg of sorted) {
       if (msg.system) continue;
-      const text = msg.content?.trim();
-      if (!text) continue;
+      const text = msg.content?.trim() ?? '';
+      
+      const msgAttachments = msg.attachments ? [...msg.attachments.values()].filter(a => a.contentType?.startsWith('image/')) : [];
+      if (!text && msgAttachments.length === 0) continue;
+      
       if (text.startsWith('/') || text.startsWith('!')) continue;
       if (msg.author.bot && /^[🔧⏳⚠️🌐🔑❌🔄🛑]/.test(text)) continue;
 
       const role = msg.author.bot ? 'assistant' : 'user';
-      history.push({ role, content: text });
+      
+      let content = [];
+      if (text) {
+        content.push({ type: 'text', text });
+      }
+
+      for (const att of msgAttachments) {
+        try {
+          const res = await fetch(att.url);
+          if (res.ok) {
+            const buffer = Buffer.from(await res.arrayBuffer());
+            content.push({
+              type: 'image_url',
+              image_url: {
+                url: `data:${att.contentType};base64,${buffer.toString('base64')}`
+              }
+            });
+          }
+        } catch (e) {
+          console.error('Failed to fetch history image', e);
+        }
+      }
+
+      if (content.length === 1 && content[0].type === 'text') {
+        history.push({ role, content: content[0].text });
+      } else if (content.length > 0) {
+        history.push({ role, content });
+      }
     }
 
-    history.push({ role: 'user', content: messageText });
+    let currentContent = [];
+    if (messageText) {
+      currentContent.push({ type: 'text', text: messageText });
+    }
+    
+    if (messageAttachments && messageAttachments.size > 0) {
+      const currentImageAttachments = [...messageAttachments.values()].filter(a => a.contentType?.startsWith('image/'));
+      for (const att of currentImageAttachments) {
+        try {
+          const res = await fetch(att.url);
+          if (res.ok) {
+            const buffer = Buffer.from(await res.arrayBuffer());
+            currentContent.push({
+              type: 'image_url',
+              image_url: {
+                url: `data:${att.contentType};base64,${buffer.toString('base64')}`
+              }
+            });
+          }
+        } catch (e) {
+          console.error('Failed to fetch current image', e);
+        }
+      }
+    }
 
-    // Map `aiModel` string to n9router supported models
-    const modelToUse = aiModel === 'pro' ? 'gemini/gemini-2.5-pro' : 'gemini/gemini-2.5-flash';
+    if (currentContent.length === 1 && currentContent[0].type === 'text') {
+      history.push({ role: 'user', content: currentContent[0].text });
+    } else if (currentContent.length > 0) {
+      history.push({ role: 'user', content: currentContent });
+    }
+
+    // Map `aiModel` string to n9router supported models if using shorthands, otherwise pass it directly
+    const modelToUse = aiModel === 'pro' ? 'gemini/gemini-2.5-pro' : (aiModel === 'lite' ? 'gemini/gemini-2.5-flash' : aiModel);
 
     let iterations = 0;
     while (iterations < MAX_TOOL_ITERATIONS) {
@@ -147,7 +212,7 @@ ${additionalSkills}`
         for (const toolCall of message.tool_calls) {
           console.log(`[MB01] Executing tool: ${toolCall.function.name}`);
           const args = JSON.parse(toolCall.function.arguments);
-          const toolResult = await executeMB01Tool(toolCall.function.name, args, { guild: thread.guild });
+          const toolResult = await executeMB01Tool(toolCall.function.name, args, { guild: thread.guild, thread });
           
           history.push({
             role: 'tool',

@@ -61,5 +61,21 @@ export const COMMANDS = [
       subcommand
         .setName('list')
         .setDescription('Lihat daftar tugas yang belum selesai')
+    ),
+
+  new SlashCommandBuilder()
+    .setName('model')
+    .setDescription('Pilih model AI global yang ingin digunakan via 9router')
+    .addStringOption((o) =>
+      o
+        .setName('nama')
+        .setDescription('Pilih model')
+        .setRequired(true)
+        .addChoices(
+          { name: 'Gemini 2.5 Flash', value: 'gemini/gemini-2.5-flash' },
+          { name: 'Gemini 2.5 Pro', value: 'gemini/gemini-2.5-pro' },
+          { name: 'Claude 3.5 Sonnet', value: 'claude-3-5-sonnet' },
+          { name: 'GPT-4o', value: 'gpt-4o' }
+        )
     )
 ];

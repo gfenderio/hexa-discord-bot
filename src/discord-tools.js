@@ -1,5 +1,6 @@
 import { ChannelType, PermissionFlagsBits } from 'discord.js';
 import fs from 'fs';
+import { withDb } from './storage.js';
 import path from 'path';
 import { exec } from 'child_process';
 import util from 'util';
@@ -185,10 +186,52 @@ export const MB01_TOOLS_DECLARATION = [
         additionalProperties: false
       }
     }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'generate_image',
+      description: 'Generate sebuah gambar berdasarkan prompt teks dan kirimkan langsung ke chat.',
+      parameters: {
+        type: 'object',
+        properties: {
+          prompt: { type: 'string', description: 'Deskripsi gambar yang ingin digenerate dalam bahasa Inggris' }
+        },
+        required: ['prompt'],
+        additionalProperties: false
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_9router_models',
+      description: 'Dapatkan daftar model AI yang tersedia di sistem 9router.',
+      parameters: {
+        type: 'object',
+        properties: {},
+        additionalProperties: false
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'set_9router_model',
+      description: 'Ubah model AI yang aktif untuk thread percakapan ini via 9router.',
+      parameters: {
+        type: 'object',
+        properties: {
+          model_name: { type: 'string', description: 'Nama model (misal: gemini/gemini-2.5-pro)' }
+        },
+        required: ['model_name'],
+        additionalProperties: false
+      }
+    }
   }
 ];
 
-export async function executeMB01Tool(name, args, { guild }) {
+export async function executeMB01Tool(name, args, { guild, thread }) {
   try {
     switch (name) {
       case 'get_server_info': {
@@ -315,12 +358,76 @@ export async function executeMB01Tool(name, args, { guild }) {
         return `File ${args.filePath} berhasil ditulis.`;
       }
       case 'run_bash_sandbox': {
-        const dockerCmd = `docker run --rm -v ${WORKSPACE_DIR}:/workspace -v /root/.ssh:/root/.ssh:ro -v /root/.gitconfig:/root/.gitconfig:ro -e GIT_SSH_COMMAND="ssh -i /root/.ssh/stzn_bot_rsa -o IdentitiesOnly=yes" -w /workspace node:20 /bin/bash -c ${JSON.stringify(args.command)}`;
+        const gitconfigMount = fs.existsSync('/root/.gitconfig') ? '-v /root/.gitconfig:/root/.gitconfig:ro' : '';
+        const sshMount = fs.existsSync('/root/.ssh') ? '-v /root/.ssh:/root/.ssh:ro' : '';
+        const dockerCmd = `docker run --rm -v ${WORKSPACE_DIR}:/workspace ${sshMount} ${gitconfigMount} -e GIT_SSH_COMMAND="ssh -i /root/.ssh/stzn_bot_rsa -o IdentitiesOnly=yes" -w /workspace node:20 /bin/bash -c ${JSON.stringify(args.command)}`;
         try {
           const { stdout, stderr } = await execPromise(dockerCmd, { timeout: 30000 });
           return `STDOUT:\n${stdout}\nSTDERR:\n${stderr}`;
         } catch (e) {
           return `ERROR:\n${e.message}\nSTDOUT:\n${e.stdout}\nSTDERR:\n${e.stderr}`;
+        }
+      }
+      
+      case 'generate_image': {
+        const safePrompt = encodeURIComponent(args.prompt);
+        const seed = Math.floor(Math.random() * 1000000);
+        const imageUrl = `https://image.pollinations.ai/prompt/${safePrompt}?seed=${seed}&nologo=true`;
+        
+        if (thread) {
+          try {
+            const { EmbedBuilder } = await import('discord.js');
+            const embed = new EmbedBuilder()
+              .setTitle('🎨 Hasil Generate Gambar')
+              .setImage(imageUrl)
+              .setFooter({ text: `Prompt: ${args.prompt}` })
+              .setColor(0x5865F2);
+            await thread.send({ embeds: [embed] });
+          } catch (e) {
+            console.error('Failed to send image embed:', e);
+          }
+        }
+        
+        return { success: true, imageUrl, message: "Gambar berhasil digenerate dan dikirim ke chat." };
+      }
+      
+      case 'get_9router_models': {
+        try {
+          // You can also fetch from http://localhost:20128/v1/models if 9router supports it
+          // For now, return a static/common list supported by 9router standard config
+          return {
+            models: [
+              "gemini/gemini-2.5-flash",
+              "gemini/gemini-2.5-pro",
+              "gemini/gemini-1.5-pro",
+              "gemini/gemini-1.5-flash",
+              "claude-3-5-sonnet",
+              "gpt-4o",
+              "gpt-4o-mini"
+            ],
+            message: "Gunakan set_9router_model dengan salah satu nama model di atas."
+          };
+        } catch (e) {
+          return { error: e.message };
+        }
+      }
+      
+      case 'set_9router_model': {
+        if (!thread) {
+          return { error: 'Tool ini hanya dapat dijalankan di dalam thread AI (mb01).' };
+        }
+        let updated = false;
+        withDb((db) => {
+          if (db.mb01Threads && db.mb01Threads[thread.id]) {
+            db.mb01Threads[thread.id].model = args.model_name;
+            updated = true;
+          }
+          return db;
+        });
+        if (updated) {
+          return { success: true, message: `Model untuk thread ini berhasil diubah menjadi ${args.model_name}.` };
+        } else {
+          return { error: 'Gagal mengubah model. Thread ini mungkin tidak tercatat dalam database.' };
         }
       }
 
