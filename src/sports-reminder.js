@@ -82,19 +82,33 @@ Jika hari ini tidak ada jadwal untuk suatu entitas, jangan masukkan ke array. Ji
         if (waitMs > 0 && waitMs < 24 * 60 * 60 * 1000) {
           console.log(`[SportsReminder] Scheduled reminder for ${item.event} in ${waitMs} ms.`);
           setTimeout(() => {
+            let customCheer = '';
+            const sportLower = item.sport.toLowerCase();
+            if (sportLower.includes('f1') || sportLower.includes('formula')) customCheer = '\n\n🏎️ **Ayo dukung jagoan kita: Max Verstappen!** 🏆';
+            if (sportLower.includes('moto3')) customCheer = '\n\n🏍️ **Gaspol terus Veda Pratama! Bawa harum nama bangsa!** 🇮🇩';
+            if (sportLower.includes('liverpool')) customCheer = '\n\n⚽ **YNWA! Ayo bantai lawan malam ini!** 🔴';
+            if (sportLower.includes('timnas') || sportLower.includes('indonesia')) customCheer = '\n\n🇮🇩 **GARUDA DI DADAKU! Wajib menang!** 🔥';
+
             const embed = new EmbedBuilder()
               .setColor('#ff0000')
               .setTitle(`🚨 PENGINGAT OLAHRAGA: ${item.sport}`)
-              .setDescription(`**${item.event}** akan dimulai dalam **15 menit**! Bersiap-siap!`)
+              .setDescription(`**${item.event}** akan dimulai dalam **15 menit**! Bersiap-siap!${customCheer}`)
               .setTimestamp(eventTime);
             channel.send({ content: '<@419213146209779713>', embeds: [embed] }).catch(console.error);
           }, waitMs);
         } else if (waitMs <= 0 && eventTime > now) {
             // If it's already less than 15 minutes to start, send it immediately!
+            let customCheer = '';
+            const sportLower = item.sport.toLowerCase();
+            if (sportLower.includes('f1') || sportLower.includes('formula')) customCheer = '\n\n🏎️ **Ayo dukung jagoan kita: Max Verstappen!** 🏆';
+            if (sportLower.includes('moto3')) customCheer = '\n\n🏍️ **Gaspol terus Veda Pratama! Bawa harum nama bangsa!** 🇮🇩';
+            if (sportLower.includes('liverpool')) customCheer = '\n\n⚽ **YNWA! Ayo bantai lawan malam ini!** 🔴';
+            if (sportLower.includes('timnas') || sportLower.includes('indonesia')) customCheer = '\n\n🇮🇩 **GARUDA DI DADAKU! Wajib menang!** 🔥';
+
             const embed = new EmbedBuilder()
               .setColor('#ff0000')
               .setTitle(`🚨 PENGINGAT OLAHRAGA: ${item.sport}`)
-              .setDescription(`**${item.event}** akan SEGERA DIMULAI! Bersiap-siap!`)
+              .setDescription(`**${item.event}** akan SEGERA DIMULAI! Bersiap-siap!${customCheer}`)
               .setTimestamp(eventTime);
             channel.send({ content: '<@419213146209779713>', embeds: [embed] }).catch(console.error);
         }
