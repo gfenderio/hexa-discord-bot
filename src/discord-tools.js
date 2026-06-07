@@ -291,6 +291,21 @@ export const MB01_TOOLS_DECLARATION = [
         additionalProperties: false
       }
     }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_youtube_transcript',
+      description: 'Mengambil transkrip teks/subtitle otomatis dari video YouTube. Gunakan ini untuk merangkum atau menganalisis isi video YouTube.',
+      parameters: {
+        type: 'object',
+        properties: {
+          url: { type: 'string', description: 'URL lengkap video YouTube' }
+        },
+        required: ['url'],
+        additionalProperties: false
+      }
+    }
   }
 ];
 
@@ -485,6 +500,18 @@ export async function executeMB01Tool(name, args, { guild, thread }) {
         return { success: true, message: "Gambar berhasil digenerate dan diunggah ke chat." };
       }
       
+      case 'get_youtube_transcript': {
+        try {
+          const { YoutubeTranscript } = require('youtube-transcript');
+          const transcript = await YoutubeTranscript.fetchTranscript(args.url);
+          // Gabungkan semua teks menjadi satu paragraf panjang
+          const text = transcript.map(t => t.text).join(' ');
+          return text;
+        } catch (e) {
+          return `ERROR: Gagal mengambil transkrip YouTube: ${e.message}`;
+        }
+      }
+
       case 'get_9router_models': {
         try {
           // You can also fetch from http://localhost:20128/v1/models if 9router supports it
