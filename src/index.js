@@ -87,12 +87,21 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const prompt = Buffer.from(base64Prompt, 'base64').toString('utf8');
       
       const seed = Math.floor(Math.random() * 1000000);
-      const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?seed=${seed}&nologo=true`;
       
-      const res = await fetch(imageUrl);
-      if (!res.ok) {
-        throw new Error(`Pollinations API Error: ${await res.text()}`);
+      const modelsToTry = ['flux', 'flux-realism', 'turbo', 'dall-e-3'];
+      let res = null;
+      let finalImageUrl = '';
+
+      for (const model of modelsToTry) {
+        finalImageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?seed=${seed}&nologo=true&model=${model}`;
+        res = await fetch(finalImageUrl);
+        if (res.ok) break;
       }
+
+      if (!res || !res.ok) {
+        throw new Error(`Pollinations API Error: Semua model sibuk. ${res ? await res.text() : ''}`);
+      }
+      
       const arrayBuffer = await res.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
       
