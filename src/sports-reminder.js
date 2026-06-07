@@ -55,7 +55,7 @@ Jika hari ini tidak ada jadwal untuk suatu entitas, jangan masukkan ke array. Ji
         for (const call of msg.tool_calls) {
           if (call.function.name === 'search_web') {
             const args = JSON.parse(call.function.arguments);
-            const toolRes = await executeMB01Tool('search_web', args, null, null);
+            const toolRes = await executeMB01Tool('search_web', args, {});
             messages.push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify(toolRes) });
           }
         }
