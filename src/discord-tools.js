@@ -430,6 +430,7 @@ export async function executeMB01Tool(name, args, { guild, thread }) {
         } catch (e) {
           return `ERROR:\n${e.message}\nSTDOUT:\n${e.stdout}\nSTDERR:\n${e.stderr}`;
         }
+      }
       case 'generate_image': {
         const safePrompt = encodeURIComponent(args.prompt);
         const seed = Math.floor(Math.random() * 1000000);
