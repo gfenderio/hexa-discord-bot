@@ -430,53 +430,43 @@ export async function executeMB01Tool(name, args, { guild, thread }) {
         } catch (e) {
           return `ERROR:\n${e.message}\nSTDOUT:\n${e.stdout}\nSTDERR:\n${e.stderr}`;
         }
-      }
-      
       case 'generate_image': {
-        const { ENV } = await import('./env.js');
-        if (!ENV.GEMINI_API_KEY) {
-          throw new Error("GEMINI_API_KEY belum di-set di .env. Silakan tambahkan kunci dari Google AI Studio.");
-        }
+        const safePrompt = encodeURIComponent(args.prompt);
+        const seed = Math.floor(Math.random() * 1000000);
         
-        // Parse comma-separated keys and pick a random one to avoid rate limits
-        const keys = ENV.GEMINI_API_KEY.split(',').map(k => k.trim()).filter(k => k.length > 0);
-        const apiKey = keys[Math.floor(Math.random() * keys.length)];
-
         if (thread) {
           try {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${apiKey}`;
-            const body = {
-              instances: [{ prompt: args.prompt }],
-              parameters: { sampleCount: 1, aspectRatio: "1:1" }
-            };
+            const modelsToTry = ['flux', 'flux-realism', 'turbo', 'dall-e-3'];
+            let res = null;
+            let finalImageUrl = '';
 
-            const res = await fetch(url, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(body)
-            });
-
-            if (!res.ok) {
-              const errText = await res.text();
-              throw new Error(`Google API Error: ${errText}`);
+            for (const model of modelsToTry) {
+              finalImageUrl = `https://image.pollinations.ai/prompt/${safePrompt}?seed=${seed}&nologo=true&model=${model}`;
+              // Generate random IP to bypass shared IPv6 queue limits
+              const randomIp = `${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}`;
+              
+              res = await fetch(finalImageUrl, {
+                headers: { 'X-Forwarded-For': randomIp }
+              });
+              if (res.ok) break;
             }
 
-            const data = await res.json();
-            if (!data.predictions || !data.predictions[0] || !data.predictions[0].bytesBase64Encoded) {
-              throw new Error("Invalid response format dari Google API.");
+            if (!res || !res.ok) {
+              const errText = res ? await res.text() : 'No response';
+              throw new Error(`Pollinations API Error: Semua model sibuk. Response: ${errText}`);
             }
-
-            const base64Data = data.predictions[0].bytesBase64Encoded;
-            const buffer = Buffer.from(base64Data, 'base64');
+            
+            const arrayBuffer = await res.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
 
             const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder } = await import('discord.js');
-            const attachment = new AttachmentBuilder(buffer, { name: 'google_imagen.png' });
+            const attachment = new AttachmentBuilder(buffer, { name: 'generated.jpg' });
             
             const embed = new EmbedBuilder()
-              .setTitle('✨ Hasil Generate Gambar (Google Imagen 3)')
-              .setImage('attachment://google_imagen.png')
+              .setTitle('🎨 Hasil Generate Gambar')
+              .setImage('attachment://generated.jpg')
               .setFooter({ text: `Prompt: ${args.prompt}` })
-              .setColor(0x0F9D58); // Google Green
+              .setColor(0x5865F2);
             
             const row = new ActionRowBuilder().addComponents(
               new ButtonBuilder()
@@ -486,12 +476,12 @@ export async function executeMB01Tool(name, args, { guild, thread }) {
             );
             await thread.send({ embeds: [embed], files: [attachment], components: [row] });
           } catch (e) {
-            console.error('Failed to generate image via Google:', e);
-            return { error: `Gagal membuat gambar via Google Imagen: ${e.message}` };
+            console.error('Failed to send image embed:', e);
+            return { error: `Gagal men-download gambar dari server: ${e.message}` };
           }
         }
         
-        return { success: true, message: "Gambar berhasil digenerate via Google Imagen dan diunggah ke chat." };
+        return { success: true, message: "Gambar berhasil digenerate dan diunggah ke chat." };
       }
       
       case 'get_9router_models': {
