@@ -145,23 +145,34 @@ ${additionalSkills}`
     }
     
     if (messageAttachments && messageAttachments.size > 0) {
-      const currentImageAttachments = [...messageAttachments.values()].filter(a => a.contentType?.startsWith('image/'));
-      for (const att of currentImageAttachments) {
+      for (const att of messageAttachments.values()) {
         try {
-          const res = await fetch(att.url);
-          if (res.ok) {
-            const buffer = Buffer.from(await res.arrayBuffer());
-            currentContent.push({
-              type: 'image_url',
-              image_url: {
-                url: `data:${att.contentType};base64,${buffer.toString('base64')}`
-              }
-            });
+          if (att.contentType?.startsWith('image/')) {
+            const res = await fetch(att.url);
+            if (res.ok) {
+              const buffer = Buffer.from(await res.arrayBuffer());
+              currentContent.push({
+                type: 'image_url',
+                image_url: {
+                  url: `data:${att.contentType};base64,${buffer.toString('base64')}`
+                }
+              });
+            }
+          } else if (att.contentType?.startsWith('text/') || att.name.endsWith('.txt') || att.name.endsWith('.js') || att.name.endsWith('.json') || att.name.endsWith('.md')) {
+            const res = await fetch(att.url);
+            if (res.ok) {
+              const textContent = await res.text();
+              currentContent.push({ type: 'text', text: `\n[Isi file lampiran: ${att.name}]\n\`\`\`\n${textContent.slice(0, 8000)}\n\`\`\`` });
+            }
           }
         } catch (e) {
-          console.error('Failed to fetch current image', e);
+          console.error(`Failed to fetch attachment ${att.name}`, e);
         }
       }
+    }
+
+    if (currentContent.length === 0) {
+      currentContent.push({ type: 'text', text: '[Pengguna mengirim file lampiran yang tidak dapat dibaca teksnya]' });
     }
 
     if (currentContent.length === 1 && currentContent[0].type === 'text') {
