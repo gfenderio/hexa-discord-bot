@@ -42,6 +42,10 @@ const client = new Client({
 client.once(Events.ClientReady, (readyClient) => {
   console.log(`Ready! Logged in as ${readyClient.user.tag}`);
   startStandupScheduler(readyClient);
+  
+  import('./webhook.js').then(module => {
+    module.startWebhookServer(readyClient);
+  }).catch(err => console.error('Failed to load webhook server:', err));
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
@@ -72,6 +76,55 @@ client.on(Events.InteractionCreate, async (interaction) => {
       } catch {
         /* ignore */
       }
+    }
+    return;
+  }
+
+  if (interaction.isButton() && interaction.customId.startsWith('regen_img:')) {
+    try {
+      await interaction.deferReply();
+      const base64Prompt = interaction.customId.split(':')[1];
+      const prompt = Buffer.from(base64Prompt, 'base64').toString('utf8');
+      
+      const seed = Math.floor(Math.random() * 1000000);
+      const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?seed=${seed}&nologo=true`;
+      
+      const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = await import('discord.js');
+      const embed = new EmbedBuilder()
+        .setTitle('🎨 Hasil Generate Gambar (Ulang)')
+        .setImage(imageUrl)
+        .setFooter({ text: `Prompt: ${prompt}` })
+        .setColor(0x5865F2);
+        
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`regen_img:${base64Prompt}`)
+          .setLabel('🔄 Buat Ulang')
+          .setStyle(ButtonStyle.Primary)
+      );
+      
+      await interaction.editReply({ embeds: [embed], components: [row] });
+    } catch (e) {
+      console.error(e);
+      await interaction.editReply({ content: 'Gagal meregenerate gambar.' });
+    }
+    return;
+  }
+
+  if (interaction.isButton() && interaction.customId.startsWith('task_done:')) {
+    try {
+      await interaction.deferReply();
+      const taskId = interaction.customId.split(':')[1];
+      const { updateNotionTaskStatus } = await import('./notion.js');
+      await updateNotionTaskStatus(taskId, 'Done');
+      await interaction.editReply({ content: `✅ Task berhasil ditandai selesai!` });
+      // Remove the button from the original message if possible
+      try {
+        await interaction.message.edit({ components: [] });
+      } catch (err) {}
+    } catch (e) {
+      console.error(e);
+      await interaction.editReply({ content: 'Gagal menyelesaikan task.' });
     }
     return;
   }
@@ -253,8 +306,40 @@ client.on(Events.InteractionCreate, async (interaction) => {
             const emoji = urgency === 'High' ? '🔴' : (urgency === 'Medium' ? '🟡' : '🟢');
             return `${emoji} **${title}** (${status})`;
           }).join('\n');
-          await interaction.editReply(`📋 **Daftar Tugas Hexa:**\n${list}`);
+          
+          const components = [];
+          if (tasks.length > 0) {
+            const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = await import('discord.js');
+            const row = new ActionRowBuilder();
+            for (let i = 0; i < Math.min(tasks.length, 5); i++) {
+              const t = tasks[i];
+              row.addComponents(
+                new ButtonBuilder()
+                  .setCustomId(`task_done:${t.id}`)
+                  .setLabel(`✅ Selesai #${i+1}`)
+                  .setStyle(ButtonStyle.Success)
+              );
+            }
+            components.push(row);
+          }
+          await interaction.editReply({ content: `📋 **Daftar Tugas Hexa:**\n${list}`, components });
         }
+      }
+      return;
+    }
+
+    if (interaction.commandName === 'record') {
+      await interaction.deferReply();
+      const action = interaction.options.getString('action');
+      if (action === 'start') {
+        const member = interaction.member;
+        if (!member.voice.channel) {
+          await interaction.editReply('❌ Anda harus berada di dalam Voice Channel terlebih dahulu!');
+          return;
+        }
+        await interaction.editReply(`🎙️ **Merekam Meeting dimulai** di <#${member.voice.channelId}>.\n*(Catatan: Fitur Voice-to-Text membutuhkan dependensi Audio Mixer (PCM Muxing) yang berat untuk RAM VPS 1GB. Saat ini fitur berjalan dalam mode Experimental/Mock).*`);
+      } else {
+        await interaction.editReply(`✅ **Rekaman Selesai.**\nSedang memproses notulensi... (Mocking AI Transcript)\n\n📝 **Notulensi Meeting (Simulasi):**\n- Tim sepakat untuk menggunakan struktur DB baru di Notion.\n- Deployment fitur Webhook akan dilakukan malam ini.\n- Tidak ada blocker utama sejauh ini.`);
       }
       return;
     }

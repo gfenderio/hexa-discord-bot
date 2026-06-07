@@ -1,5 +1,6 @@
 import { ChannelType, PermissionFlagsBits } from 'discord.js';
 import fs from 'fs';
+import * as cheerio from 'cheerio';
 import { withDb } from './storage.js';
 import path from 'path';
 import { exec } from 'child_process';
@@ -228,6 +229,68 @@ export const MB01_TOOLS_DECLARATION = [
         additionalProperties: false
       }
     }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'search_web',
+      description: 'Lakukan pencarian Google/Web untuk mendapatkan informasi real-time.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'Kata kunci pencarian' }
+        },
+        required: ['query'],
+        additionalProperties: false
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'read_url',
+      description: 'Membaca dan mengekstrak teks utama dari sebuah URL artikel atau dokumentasi.',
+      parameters: {
+        type: 'object',
+        properties: {
+          url: { type: 'string', description: 'URL lengkap (http/https)' }
+        },
+        required: ['url'],
+        additionalProperties: false
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'create_notion_page',
+      description: 'Membuat halaman Notion baru dengan konten terstruktur (Markdown ringan didukung).',
+      parameters: {
+        type: 'object',
+        properties: {
+          title: { type: 'string', description: 'Judul halaman' },
+          content: { type: 'string', description: 'Isi teks halaman (gunakan double newline untuk paragraf baru, dan ``` bahasa untuk kode)' }
+        },
+        required: ['title', 'content'],
+        additionalProperties: false
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'update_notion_task',
+      description: 'Mengubah status dari sebuah task di Notion.',
+      parameters: {
+        type: 'object',
+        properties: {
+          taskId: { type: 'string', description: 'ID unik task' },
+          status: { type: 'string', description: 'Status baru (To-Do, Doing, Done)' }
+        },
+        required: ['taskId', 'status'],
+        additionalProperties: false
+      }
+    }
   }
 ];
 
@@ -376,13 +439,20 @@ export async function executeMB01Tool(name, args, { guild, thread }) {
         
         if (thread) {
           try {
-            const { EmbedBuilder } = await import('discord.js');
+            const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = await import('discord.js');
             const embed = new EmbedBuilder()
               .setTitle('🎨 Hasil Generate Gambar')
               .setImage(imageUrl)
               .setFooter({ text: `Prompt: ${args.prompt}` })
               .setColor(0x5865F2);
-            await thread.send({ embeds: [embed] });
+            
+            const row = new ActionRowBuilder().addComponents(
+              new ButtonBuilder()
+                .setCustomId(`regen_img:${Buffer.from(args.prompt.slice(0, 50)).toString('base64')}`)
+                .setLabel('🔄 Buat Ulang')
+                .setStyle(ButtonStyle.Primary)
+            );
+            await thread.send({ embeds: [embed], components: [row] });
           } catch (e) {
             console.error('Failed to send image embed:', e);
           }
@@ -426,6 +496,69 @@ export async function executeMB01Tool(name, args, { guild, thread }) {
           return { success: true, message: `Model untuk thread ini berhasil diubah menjadi ${args.model_name}.` };
         } else {
           return { error: 'Gagal mengubah model. Thread ini mungkin tidak tercatat dalam database.' };
+        }
+      }
+      
+      case 'search_web': {
+        try {
+          const res = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(args.query)}`, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+          });
+          if (!res.ok) throw new Error(`Status ${res.status}`);
+          const html = await res.text();
+          const $ = cheerio.load(html);
+          const results = [];
+          $('.result').each((i, el) => {
+            if (i >= 5) return;
+            const title = $(el).find('.result__title').text().trim();
+            const url = $(el).find('.result__url').attr('href');
+            let actualUrl = url;
+            if (url && url.startsWith('//duckduckgo.com/l/?uddg=')) {
+              actualUrl = decodeURIComponent(url.split('uddg=')[1].split('&')[0]);
+            }
+            const snippet = $(el).find('.result__snippet').text().trim();
+            if (title && snippet) results.push({ title, url: actualUrl, snippet });
+          });
+          return { success: true, results: results.length ? results : 'Tidak ada hasil.' };
+        } catch (e) {
+          return { error: e.message };
+        }
+      }
+
+      case 'read_url': {
+        try {
+          const res = await fetch(args.url, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+          });
+          if (!res.ok) throw new Error(`Status ${res.status}`);
+          const html = await res.text();
+          const $ = cheerio.load(html);
+          // Remove scripts, styles, navs
+          $('script, style, nav, footer, header, aside, noscript, svg').remove();
+          const text = $('body').text().replace(/\s+/g, ' ').trim();
+          return { success: true, text: text.slice(0, 8000) + (text.length > 8000 ? '...(terpotong)' : '') };
+        } catch (e) {
+          return { error: e.message };
+        }
+      }
+
+      case 'create_notion_page': {
+        try {
+          const { createNotionPage } = await import('./notion.js');
+          const res = await createNotionPage(args.title, args.content);
+          return { success: true, url: res.url };
+        } catch (e) {
+          return { error: e.message };
+        }
+      }
+
+      case 'update_notion_task': {
+        try {
+          const { updateNotionTaskStatus } = await import('./notion.js');
+          const res = await updateNotionTaskStatus(args.taskId, args.status);
+          return { success: true, message: `Task diubah ke status ${args.status}` };
+        } catch (e) {
+          return { error: e.message };
         }
       }
 

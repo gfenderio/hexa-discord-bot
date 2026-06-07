@@ -61,5 +61,18 @@ export const COMMANDS = [
       subcommand
         .setName('list')
         .setDescription('Lihat daftar tugas yang belum selesai')
+    ),
+
+  new SlashCommandBuilder()
+    .setName('record')
+    .setDescription('Rekam meeting di Voice Channel saat ini untuk dibuatkan Notulensi oleh AI')
+    .addStringOption(o => 
+      o.setName('action')
+       .setDescription('Mulai atau Berhenti merekam')
+       .setRequired(true)
+       .addChoices(
+         { name: 'Mulai Rekam', value: 'start' },
+         { name: 'Berhenti & Buat Notulensi', value: 'stop' }
+       )
     )
 ];

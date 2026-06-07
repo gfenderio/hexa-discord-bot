@@ -54,3 +54,71 @@ export async function getPendingTasks() {
     throw error;
   }
 }
+
+export async function updateNotionTaskStatus(taskId, status = 'Done') {
+  try {
+    const response = await notion.pages.update({
+      page_id: taskId,
+      properties: {
+        'Status': {
+          status: { name: status }
+        }
+      }
+    });
+    return response;
+  } catch (error) {
+    console.error('Error updating task in Notion:', error);
+    throw error;
+  }
+}
+
+export async function createNotionPage(title, contentMarkdown) {
+  try {
+    const blocks = [];
+    // Pisahkan konten dengan baris kosong untuk membuat blok paragraf/kode terpisah
+    const paragraphs = contentMarkdown.split('\n\n').filter(p => p.trim() !== '');
+    for (const p of paragraphs.slice(0, 50)) { // limit 50 blocks
+      if (p.startsWith('```')) {
+        const lines = p.split('\n');
+        const lang = lines[0].replace('```', '').trim() || 'plain text';
+        const code = lines.slice(1, -1).join('\n');
+        blocks.push({
+          object: 'block',
+          type: 'code',
+          code: {
+            rich_text: [{ type: 'text', text: { content: code.slice(0, 2000) } }],
+            language: lang === 'js' ? 'javascript' : (lang === 'ts' ? 'typescript' : 'plain text')
+          }
+        });
+      } else {
+        blocks.push({
+          object: 'block',
+          type: 'paragraph',
+          paragraph: {
+            rich_text: [{ type: 'text', text: { content: p.slice(0, 2000) } }]
+          }
+        });
+      }
+    }
+
+    const response = await notion.pages.create({
+      parent: { database_id: databaseId },
+      properties: {
+        'Task Name': {
+          title: [{ text: { content: title } }]
+        },
+        'Status': {
+          status: { name: 'To-Do' }
+        },
+        'Urgency': {
+          select: { name: 'Medium' }
+        }
+      },
+      children: blocks
+    });
+    return response;
+  } catch (error) {
+    console.error('Error creating Notion page:', error);
+    throw error;
+  }
+}
