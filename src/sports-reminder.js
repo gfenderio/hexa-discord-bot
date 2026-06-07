@@ -42,7 +42,7 @@ Jika hari ini tidak ada jadwal untuk suatu entitas, jangan masukkan ke array. Ji
 
     for (let i = 0; i < 7; i++) {
       const res = await openai.chat.completions.create({
-        model: 'gemini/gemini-2.5-pro',
+        model: 'gemini/gemini-2.5-flash',
         messages,
         tools,
         temperature: 0.1
