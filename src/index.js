@@ -259,21 +259,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
 
-    if (interaction.commandName === 'model') {
-      await interaction.deferReply({ ephemeral: true });
-      const modelName = interaction.options.getString('nama');
-      
-      withDb((db) => {
-        db.userPrefs ??= {};
-        db.userPrefs[interaction.user.id] ??= {};
-        db.userPrefs[interaction.user.id].model = modelName;
-        return db;
-      });
-      
-      await interaction.editReply(`✅ Model default kamu via 9router telah diubah menjadi: **${modelName}**. Mode ini akan dipakai saat kamu memanggil \`/mb01\` tanpa memilih opsi model.`);
-      return;
-    }
-
     if (interaction.commandName === 'mb01') {
       if (!interaction.inGuild()) {
         await interaction.reply({
@@ -309,16 +294,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         reason: `AI Chatbox for ${interaction.user.tag}`
       });
 
-      let selectedModel = interaction.options.getString('model');
-      if (!selectedModel) {
-        withDb((db) => {
-          if (db.userPrefs?.[interaction.user.id]?.model) {
-            selectedModel = db.userPrefs[interaction.user.id].model;
-          }
-          return db;
-        });
-      }
-      selectedModel = selectedModel || 'lite';
+      const selectedModel = interaction.options.getString('model') || 'lite';
       
       withDb((db) => {
         db.mb01Threads ??= {};
