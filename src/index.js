@@ -90,8 +90,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (!ENV.GEMINI_API_KEY) {
         throw new Error("GEMINI_API_KEY belum di-set di .env");
       }
+      
+      const keys = ENV.GEMINI_API_KEY.split(',').map(k => k.trim()).filter(k => k.length > 0);
+      const apiKey = keys[Math.floor(Math.random() * keys.length)];
 
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${ENV.GEMINI_API_KEY}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${apiKey}`;
       const body = {
         instances: [{ prompt: prompt }],
         parameters: { sampleCount: 1, aspectRatio: "1:1" }

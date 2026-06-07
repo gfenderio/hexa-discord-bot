@@ -437,10 +437,14 @@ export async function executeMB01Tool(name, args, { guild, thread }) {
         if (!ENV.GEMINI_API_KEY) {
           throw new Error("GEMINI_API_KEY belum di-set di .env. Silakan tambahkan kunci dari Google AI Studio.");
         }
+        
+        // Parse comma-separated keys and pick a random one to avoid rate limits
+        const keys = ENV.GEMINI_API_KEY.split(',').map(k => k.trim()).filter(k => k.length > 0);
+        const apiKey = keys[Math.floor(Math.random() * keys.length)];
 
         if (thread) {
           try {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${ENV.GEMINI_API_KEY}`;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${apiKey}`;
             const body = {
               instances: [{ prompt: args.prompt }],
               parameters: { sampleCount: 1, aspectRatio: "1:1" }
