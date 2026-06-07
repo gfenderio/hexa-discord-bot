@@ -502,7 +502,7 @@ export async function executeMB01Tool(name, args, { guild, thread }) {
       
       case 'get_youtube_transcript': {
         try {
-          const { YoutubeTranscript } = require('youtube-transcript');
+          const { YoutubeTranscript } = await import('youtube-transcript');
           const transcript = await YoutubeTranscript.fetchTranscript(args.url);
           // Gabungkan semua teks menjadi satu paragraf panjang
           const text = transcript.map(t => t.text).join(' ');
