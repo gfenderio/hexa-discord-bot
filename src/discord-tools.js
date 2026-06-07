@@ -399,8 +399,6 @@ export async function executeMB01Tool(name, args, { guild, thread }) {
             models: [
               "gemini/gemini-2.5-flash",
               "gemini/gemini-2.5-pro",
-              "gemini/gemini-1.5-pro",
-              "gemini/gemini-1.5-flash",
               "claude-3-5-sonnet",
               "gpt-4o",
               "gpt-4o-mini"
