@@ -8,7 +8,7 @@ const HISTORY_FETCH_LIMIT = 80;
 const MAX_TOOL_ITERATIONS = 8;
 
 // Create OpenAI client pointing to n9router
-const openai = new OpenAI({
+export const openai = new OpenAI({
   apiKey: "sk-router-dummy", // n9router defaults don't require an API key for localhost
   baseURL: "http://localhost:20128/v1"
 });
