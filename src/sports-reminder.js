@@ -70,27 +70,6 @@ Jika hari ini tidak ada jadwal untuk suatu entitas, jangan masukkan ke array. Ji
       const data = JSON.parse(cleanedJson);
       const now = Date.now();
       
-      const f1Cheers = [
-        '\n\n🏎️ **Ayo dukung jagoan kita: Max Verstappen! Semongko!** 🏆',
-        '\n\n🏎️ **Max Verstappen siap gaspol ninggalin yang lain!** 🏁',
-        '\n\n🏎️ **Waktunya nonton Max Verstappen nge-drift di tikungan!** 🔥'
-      ];
-      const moto3Cheers = [
-        '\n\n🏍️ **Gaspol terus Veda Pratama! Bawa harum nama bangsa!** 🇮🇩',
-        '\n\n🏍️ **Veda Pratama siap melesat kencang! Jangan kasih kendor!** 🚀',
-        '\n\n🏍️ **Ayo Veda! Tunjukkan nyali khas pebalap Indonesia!** 🇮🇩🔥'
-      ];
-      const liverpoolCheers = [
-        '\n\n⚽ **YNWA! Ayo Liverpool bantai lawan malam ini!** 🔴',
-        '\n\n⚽ **Anfield siap bergemuruh! Ayo The Reds!** 🔴🔥',
-        '\n\n⚽ **Waktunya Liverpool panen gol! YNWA!** 🏆'
-      ];
-      const timnasCheers = [
-        '\n\n🇮🇩 **GARUDA DI DADAKU! Wajib menang!** 🔥',
-        '\n\n🇮🇩 **Ayo Timnas! Bikin bangga seluruh rakyat Indonesia!** 🦅',
-        '\n\n🇮🇩 **Hantam lawanmu! Garuda siap terbang tinggi!** 🇮🇩⚽'
-      ];
-
       for (const item of data) {
         const eventTime = new Date(item.time).getTime();
         if (isNaN(eventTime)) continue;
@@ -98,22 +77,33 @@ Jika hari ini tidak ada jadwal untuk suatu entitas, jangan masukkan ke array. Ji
         // Calculate 15 minutes before
         const targetTime = eventTime - (15 * 60 * 1000);
         const waitMs = targetTime - now;
-
-        const sportLower = item.sport.toLowerCase();
-        let customCheer = '';
-        if (sportLower.includes('f1') || sportLower.includes('formula')) customCheer = f1Cheers[Math.floor(Math.random() * f1Cheers.length)];
-        if (sportLower.includes('moto3')) customCheer = moto3Cheers[Math.floor(Math.random() * moto3Cheers.length)];
-        if (sportLower.includes('liverpool')) customCheer = liverpoolCheers[Math.floor(Math.random() * liverpoolCheers.length)];
-        if (sportLower.includes('timnas') || sportLower.includes('indonesia')) customCheer = timnasCheers[Math.floor(Math.random() * timnasCheers.length)];
-
         const userPing = '<@419213146209779713>';
-        const embedDescription = `Halo ${userPing}!\n**${item.event}** akan dimulai dalam **15 menit**! Bersiap-siap!${customCheer}`;
-        const embedDescriptionImmediate = `Halo ${userPing}!\n**${item.event}** akan SEGERA DIMULAI! Bersiap-siap!${customCheer}`;
+
+        // Helper function to generate AI cheer
+        const generateAICheer = async (sportName) => {
+            try {
+                const res = await openai.chat.completions.create({
+                    model: 'gemini/gemini-2.5-flash',
+                    messages: [{
+                        role: 'user',
+                        content: `Buatkan 1 kalimat semangat super heboh dan gaul untuk mendukung ${sportName} yang akan tanding 15 menit lagi! Fokus ke tokoh utama jika ada (misal: Max Verstappen untuk F1, Veda Pratama untuk Moto3, atau secara umum untuk Liverpool/Timnas). Maks 15 kata, gunakan emoji yang relevan, jangan berikan awalan/akhiran tambahan.`
+                    }],
+                    temperature: 0.9
+                });
+                return '\n\n' + res.choices[0].message.content.trim();
+            } catch (e) {
+                console.error('[SportsReminder] Failed to generate AI cheer:', e.message);
+                return '\n\n🔥 Ayo semangat bertanding!';
+            }
+        };
 
         // Only schedule if the reminder time is in the future, and within the next 24 hours
         if (waitMs > 0 && waitMs < 24 * 60 * 60 * 1000) {
           console.log(`[SportsReminder] Scheduled reminder for ${item.event} in ${waitMs} ms.`);
-          setTimeout(() => {
+          setTimeout(async () => {
+            const customCheer = await generateAICheer(item.sport);
+            const embedDescription = `Halo ${userPing}!\n**${item.event}** akan dimulai dalam **15 menit**! Bersiap-siap!${customCheer}`;
+
             const embed = new EmbedBuilder()
               .setColor('#ff0000')
               .setTitle(`🚨 PENGINGAT OLAHRAGA: ${item.sport}`)
@@ -123,6 +113,9 @@ Jika hari ini tidak ada jadwal untuk suatu entitas, jangan masukkan ke array. Ji
           }, waitMs);
         } else if (waitMs <= 0 && eventTime > now) {
             // If it's already less than 15 minutes to start, send it immediately!
+            const customCheer = await generateAICheer(item.sport);
+            const embedDescriptionImmediate = `Halo ${userPing}!\n**${item.event}** akan SEGERA DIMULAI! Bersiap-siap!${customCheer}`;
+
             const embed = new EmbedBuilder()
               .setColor('#ff0000')
               .setTitle(`🚨 PENGINGAT OLAHRAGA: ${item.sport}`)
