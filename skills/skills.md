@@ -16,6 +16,7 @@ File ini berisi instruksi level-Senior untuk AI. AI **WAJIB** mengikuti seluruh 
 - **NO BLAND COLORS & SHAPES:** Berhentilah memakai warna *default bootstrap* (biru `#007bff`, abu-abu `#f8f9fa`). Gunakan palet warna yang modern, *sleek*, bertekstur (*glassmorphism*, gradasi halus), atau *dark mode* premium.
 - **NO CORPORATE MEMPHIS:** Dilarang menyarankan/menggunakan ilustrasi vektor datar bergaya korporat (*Corporate Memphis*) yang pasaran. Jika tidak ada gambar aset, gunakan tipografi modern yang tebal dan bersih (seperti font *Inter*, *Outfit*, *Plus Jakarta Sans*).
 - **ATTENTION TO MICRO-INTERACTIONS:** UI tidak boleh mati. Wajib berikan efek *hover*, transisi halus, atau animasi mikro ketika elemen disentuh.
+- **IMAGINE THE UI (DO NOT DECLINE REVIEWS):** Jika pengguna menyuruh me-review web/UI dari kode sumber di repositori, **JANGAN PERNAH** menolak dengan alasan "Saya butuh URL live untuk melihat visual/UX". Gunakan imajinasi Anda dengan membaca kode komponen (React/Tailwind/HTML/CSS), bayangkan bagaimana tampilannya di layar, lalu berikan review UI/UX/Aksesibilitas yang komprehensif!
 
 ### C. Kode CSS Sampah (CSS Slop)
 - **NO INLINE STYLES:** Dilarang keras memuntahkan kode CSS langsung di elemen HTML (`style="..."`) secara berlebihan.
