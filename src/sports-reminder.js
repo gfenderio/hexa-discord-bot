@@ -42,7 +42,7 @@ Jika hari ini tidak ada jadwal untuk suatu entitas, jangan masukkan ke array. Ji
 
     for (let i = 0; i < 7; i++) {
       const res = await openai.chat.completions.create({
-        model: 'gemini/gemini-1.5-flash',
+        model: 'gemini/gemini-2.5-flash-lite',
         messages,
         tools,
         temperature: 0.1
@@ -83,7 +83,7 @@ Jika hari ini tidak ada jadwal untuk suatu entitas, jangan masukkan ke array. Ji
         const generateAICheer = async (sportName) => {
             try {
                 const res = await openai.chat.completions.create({
-                    model: 'gemini/gemini-1.5-flash',
+                    model: 'gemini/gemini-2.5-flash-lite',
                     messages: [{
                         role: 'user',
                         content: `Buatkan 1 kalimat semangat super heboh dan gaul untuk mendukung ${sportName} yang akan tanding 15 menit lagi! Fokus ke tokoh utama jika ada (misal: Max Verstappen untuk F1, Veda Pratama untuk Moto3, atau secara umum untuk Liverpool/Timnas). Maks 15 kata, gunakan emoji yang relevan, jangan berikan awalan/akhiran tambahan.`

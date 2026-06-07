@@ -182,7 +182,7 @@ ${additionalSkills}`
     }
 
     // Map `aiModel` string to n9router supported models if using shorthands, otherwise pass it directly
-    const modelToUse = aiModel === 'pro' ? 'gemini/gemini-2.5-pro' : (aiModel === 'lite' ? 'gemini/gemini-1.5-flash' : aiModel);
+    const modelToUse = aiModel === 'pro' ? 'gemini/gemini-2.5-pro' : (aiModel === 'lite' ? 'gemini/gemini-2.5-flash-lite' : aiModel);
 
     let typingInterval = null;
     try {
