@@ -184,18 +184,17 @@ ${additionalSkills}`
     // Map `aiModel` string to n9router supported models if using shorthands, otherwise pass it directly
     const modelToUse = aiModel === 'pro' ? 'gemini/gemini-2.5-pro' : (aiModel === 'lite' ? 'gemini/gemini-2.5-flash' : aiModel);
 
-    let iterations = 0;
-    while (iterations < MAX_TOOL_ITERATIONS) {
-      iterations++;
-      
-      let typingInterval = null;
-      try {
-        await thread.sendTyping();
-        typingInterval = setInterval(() => { thread.sendTyping().catch(() => {}); }, 7000);
-      } catch { /* ignore */ }
+    let typingInterval = null;
+    try {
+      await thread.sendTyping();
+      typingInterval = setInterval(() => { thread.sendTyping().catch(() => {}); }, 7000);
+    } catch { /* ignore */ }
 
-      let response;
-      try {
+    try {
+      let iterations = 0;
+      while (iterations < MAX_TOOL_ITERATIONS) {
+        iterations++;
+        let response;
         response = await openai.chat.completions.create({
           model: modelToUse,
           messages: history,
@@ -203,9 +202,6 @@ ${additionalSkills}`
           tool_choice: "auto",
           temperature: 0.8
         });
-      } finally {
-        if (typingInterval) clearInterval(typingInterval);
-      }
 
       const message = response.choices[0].message;
       history.push(message);
@@ -222,8 +218,14 @@ ${additionalSkills}`
 
         for (const toolCall of message.tool_calls) {
           console.log(`[MB01] Executing tool: ${toolCall.function.name}`);
-          const args = JSON.parse(toolCall.function.arguments);
-          const toolResult = await executeMB01Tool(toolCall.function.name, args, { guild: thread.guild, thread });
+          let toolResult;
+          try {
+            const args = JSON.parse(toolCall.function.arguments);
+            toolResult = await executeMB01Tool(toolCall.function.name, args, { guild: thread.guild, thread });
+          } catch (e) {
+            console.error(`Tool error [${toolCall.function.name}]:`, e);
+            toolResult = { error: `Failed to execute: ${e.message}` };
+          }
           
           history.push({
             role: 'tool',
@@ -238,6 +240,9 @@ ${additionalSkills}`
     
     if (iterations >= MAX_TOOL_ITERATIONS) {
       await thread.send(`⚠️ *Batas iterasi tool (${MAX_TOOL_ITERATIONS}) tercapai.*`);
+    }
+    } finally {
+      if (typingInterval) clearInterval(typingInterval);
     }
 
   } catch (error) {
