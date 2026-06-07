@@ -439,10 +439,20 @@ export async function executeMB01Tool(name, args, { guild, thread }) {
         
         if (thread) {
           try {
-            const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = await import('discord.js');
+            const res = await fetch(imageUrl);
+            if (!res.ok) {
+              const errText = await res.text();
+              throw new Error(`Pollinations API Error: ${errText}`);
+            }
+            const arrayBuffer = await res.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+
+            const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder } = await import('discord.js');
+            const attachment = new AttachmentBuilder(buffer, { name: 'generated.jpg' });
+            
             const embed = new EmbedBuilder()
               .setTitle('🎨 Hasil Generate Gambar')
-              .setImage(imageUrl)
+              .setImage('attachment://generated.jpg')
               .setFooter({ text: `Prompt: ${args.prompt}` })
               .setColor(0x5865F2);
             
@@ -452,13 +462,14 @@ export async function executeMB01Tool(name, args, { guild, thread }) {
                 .setLabel('🔄 Buat Ulang')
                 .setStyle(ButtonStyle.Primary)
             );
-            await thread.send({ embeds: [embed], components: [row] });
+            await thread.send({ embeds: [embed], files: [attachment], components: [row] });
           } catch (e) {
             console.error('Failed to send image embed:', e);
+            return { error: `Gagal men-download gambar dari server: ${e.message}` };
           }
         }
         
-        return { success: true, imageUrl, message: "Gambar berhasil digenerate dan dikirim ke chat." };
+        return { success: true, message: "Gambar berhasil digenerate dan diunggah ke chat." };
       }
       
       case 'get_9router_models': {

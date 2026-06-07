@@ -89,10 +89,19 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const seed = Math.floor(Math.random() * 1000000);
       const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?seed=${seed}&nologo=true`;
       
-      const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = await import('discord.js');
+      const res = await fetch(imageUrl);
+      if (!res.ok) {
+        throw new Error(`Pollinations API Error: ${await res.text()}`);
+      }
+      const arrayBuffer = await res.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      
+      const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder } = await import('discord.js');
+      const attachment = new AttachmentBuilder(buffer, { name: 'regenerated.jpg' });
+
       const embed = new EmbedBuilder()
         .setTitle('🎨 Hasil Generate Gambar (Ulang)')
-        .setImage(imageUrl)
+        .setImage('attachment://regenerated.jpg')
         .setFooter({ text: `Prompt: ${prompt}` })
         .setColor(0x5865F2);
         
@@ -103,7 +112,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           .setStyle(ButtonStyle.Primary)
       );
       
-      await interaction.editReply({ embeds: [embed], components: [row] });
+      await interaction.editReply({ embeds: [embed], files: [attachment], components: [row] });
     } catch (e) {
       console.error(e);
       await interaction.editReply({ content: 'Gagal meregenerate gambar.' });
