@@ -444,7 +444,7 @@ export async function executeMB01Tool(name, args, { guild, thread }) {
 
         if (thread) {
           try {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${apiKey}`;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${apiKey}`;
             const body = {
               instances: [{ prompt: args.prompt }],
               parameters: { sampleCount: 1, aspectRatio: "1:1" }
