@@ -2,6 +2,8 @@ import youtubedl from 'youtube-dl-exec';
 import { spawn } from 'node:child_process';
 import ffmpegPath from 'ffmpeg-static';
 import { StreamType } from '@discordjs/voice';
+import fs from 'node:fs';
+import path from 'node:path';
 
 function isValidUrl(str) {
   try {
@@ -22,15 +24,37 @@ export async function resolveTrack(query, requestedById) {
     target = `ytsearch1:${target}`;
   }
 
-  const info = await youtubedl(target, {
+  const dlOptions = {
     dumpJson: true,
     noWarnings: true,
-    noCallHome: true,
     noCheckCertificate: true,
     preferFreeFormats: true,
-    youtubeSkipDashManifest: true,
     referer: 'https://www.youtube.com/'
-  });
+  };
+
+  // Plan B: Use cookies.txt if exists
+  const cookiePath = path.join(process.cwd(), 'cookies.txt');
+  if (fs.existsSync(cookiePath)) {
+    dlOptions.cookies = cookiePath;
+  }
+
+  let info;
+  try {
+    info = await youtubedl(target, dlOptions);
+  } catch (err) {
+    // Plan C: Fallback to SoundCloud if YouTube asks for Sign In
+    if (err.message && err.message.includes('Sign in to confirm')) {
+      if (target.startsWith('ytsearch1:')) {
+        console.log('[MUSIC] YouTube blocked, falling back to SoundCloud for query:', target);
+        const scTarget = target.replace('ytsearch1:', 'scsearch1:');
+        info = await youtubedl(scTarget, dlOptions);
+      } else {
+        throw new Error('Video diblokir YouTube (Membutuhkan Sign in). Tambahkan cookies.txt di root folder server.');
+      }
+    } else {
+      throw err;
+    }
+  }
 
   const videoData = info.entries ? info.entries[0] : info;
 
@@ -53,7 +77,7 @@ export async function resolveTrack(query, requestedById) {
   }
 
   if (!streamUrl) {
-    throw new Error('Tidak ada stream audio yang valid dari YouTube.');
+    throw new Error('Tidak ada stream audio yang valid dari sumber ini.');
   }
 
   return {
@@ -61,7 +85,7 @@ export async function resolveTrack(query, requestedById) {
     url: videoData.webpage_url ?? videoData.url ?? query,
     streamUrl,
     durationSec: videoData.duration || 0,
-    channel: videoData.uploader ?? videoData.channel ?? 'YouTube',
+    channel: videoData.uploader ?? videoData.channel ?? 'Unknown',
     thumbnail: videoData.thumbnail ?? null,
     requestedBy: requestedById
   };
