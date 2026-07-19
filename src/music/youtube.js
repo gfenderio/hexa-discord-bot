@@ -77,15 +77,31 @@ export async function createStreamResource(trackUrl, _streamUrlIgnored) {
   if (!trackUrl) throw new Error('Track URL missing');
 
   try {
-    const stream = await play.stream(trackUrl, { discordPlayerCompatibility: true });
+    const info = await play.video_info(trackUrl);
+    const formats = info.format || [];
     
-    // Instead of using the raw stream which might fail inlineVolume due to WebmOpus,
-    // we pipe it into FFmpeg to get a reliable Raw PCM stream for Discord.
+    // Filter formats that actually have a URL (bypassing SABR-only empty formats)
+    const validFormats = formats.filter(f => f.url);
+    if (validFormats.length === 0) {
+      throw new Error("Tidak ada stream (SABR/PO Token diblokir). Video tidak dapat diputar dengan sesi ini.");
+    }
+
+    // Try to find an audio-only format first, fallback to any format with audio (like itag 18)
+    let bestFormat = validFormats.find(f => f.hasAudio && !f.hasVideo)
+                  || validFormats.find(f => f.hasAudio)
+                  || validFormats.find(f => f.mimeType && f.mimeType.includes('audio'))
+                  || validFormats[0];
+
+    const directUrl = bestFormat.url;
+
     const { spawn } = await import('node:child_process');
     const ffmpegPath = (await import('ffmpeg-static')).default;
 
     const ffmpeg = spawn(ffmpegPath, [
-      '-i', 'pipe:0',
+      '-reconnect', '1',
+      '-reconnect_streamed', '1',
+      '-reconnect_delay_max', '5',
+      '-i', directUrl,
       '-analyzeduration', '0',
       '-loglevel', 'error',
       '-f', 's16le',
@@ -94,11 +110,8 @@ export async function createStreamResource(trackUrl, _streamUrlIgnored) {
       'pipe:1'
     ], {
       windowsHide: true,
-      stdio: ['pipe', 'pipe', 'ignore']
+      stdio: ['ignore', 'pipe', 'ignore']
     });
-
-    stream.stream.pipe(ffmpeg.stdin);
-    ffmpeg.stdin.on('error', () => {}); // Handle EPIPE when Discord stops reading early
 
     ffmpeg.on('error', (err) => {
       console.error('ffmpeg process error:', err.message);
@@ -111,7 +124,7 @@ export async function createStreamResource(trackUrl, _streamUrlIgnored) {
       }
     };
   } catch (err) {
-    console.error('play-dl stream error:', err.message);
+    console.error('stream creation error:', err);
     throw new Error(`Gagal membuat audio stream: ${err.message}`);
   }
 }
