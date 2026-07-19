@@ -25,9 +25,8 @@ export async function resolveTrack(query, requestedById) {
     dumpJson: true,
     noWarnings: true,
     noCheckCertificate: true,
-    preferFreeFormats: true,
-    referer: 'https://www.youtube.com/',
-    extractorArgs: 'youtube:player_client=android' // Bypass YouTube Sign-In bot check
+    format: 'bestaudio/best',
+    referer: 'https://www.youtube.com/'
   };
 
   const cookiePath = path.join(process.cwd(), 'cookies.txt');
