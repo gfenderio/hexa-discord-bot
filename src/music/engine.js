@@ -28,30 +28,46 @@ function shuffleArray(arr) {
 async function updatePanel(client, guildId) {
   const session = getSession(guildId);
   const { channelId, messageId } = session.panel;
-  if (!channelId || !messageId) return;
-
+  
   try {
-    const channel = await client.channels.fetch(channelId);
-    if (!channel?.isTextBased?.()) return;
-    const msg = await channel.messages.fetch(messageId);
-    await msg.edit({
-      embeds: [
-        buildSounddeckEmbed({
-          track: session.current,
-          queueLen: session.queue.length,
-          loop: session.loop,
-          shuffle: session.shuffle,
-          volume: session.volume,
-          paused: session.paused
-        })
-      ],
-      components: buildMusicButtons({
-        paused: session.paused,
-        loop: session.loop
-      })
-    });
+    if (channelId && messageId) {
+      const channel = await client.channels.fetch(channelId);
+      if (channel?.isTextBased?.()) {
+        const msg = await channel.messages.fetch(messageId);
+        await msg.edit({
+          embeds: [
+            buildSounddeckEmbed({
+              track: session.current,
+              queueLen: session.queue.length,
+              loop: session.loop,
+              shuffle: session.shuffle,
+              volume: session.volume,
+              paused: session.paused
+            })
+          ],
+          components: buildMusicButtons({
+            paused: session.paused,
+            loop: session.loop
+          })
+        });
+        return; // Success, edited the existing panel
+      }
+    }
   } catch (e) {
-    console.error('updatePanel', e);
+    // If the message is deleted or channel is inaccessible, clear the panel ID
+    session.panel = { channelId: null, messageId: null };
+  }
+
+  // If we reach here, the panel needs to be recreated but we only have textChannelId
+  if (session.textChannelId) {
+    try {
+      const channel = await client.channels.fetch(session.textChannelId);
+      if (channel?.isTextBased?.()) {
+        await sendOrRefreshPanel(client, guildId, channel);
+      }
+    } catch (e) {
+      console.error('Failed to recreate panel:', e.message);
+    }
   }
 }
 

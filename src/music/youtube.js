@@ -77,11 +77,37 @@ export async function createStreamResource(trackUrl, _streamUrlIgnored) {
   if (!trackUrl) throw new Error('Track URL missing');
 
   try {
-    const stream = await play.stream(trackUrl);
+    const stream = await play.stream(trackUrl, { discordPlayerCompatibility: true });
+    
+    // Instead of using the raw stream which might fail inlineVolume due to WebmOpus,
+    // we pipe it into FFmpeg to get a reliable Raw PCM stream for Discord.
+    const { spawn } = await import('node:child_process');
+    const ffmpegPath = (await import('ffmpeg-static')).default;
+
+    const ffmpeg = spawn(ffmpegPath, [
+      '-i', 'pipe:0',
+      '-analyzeduration', '0',
+      '-loglevel', 'error',
+      '-f', 's16le',
+      '-ar', '48000',
+      '-ac', '2',
+      'pipe:1'
+    ], {
+      windowsHide: true,
+      stdio: ['pipe', 'pipe', 'ignore']
+    });
+
+    stream.stream.pipe(ffmpeg.stdin);
+    ffmpeg.stdin.on('error', () => {}); // Handle EPIPE when Discord stops reading early
+
+    ffmpeg.on('error', (err) => {
+      console.error('ffmpeg process error:', err.message);
+    });
+
     return {
       src: {
-        stream: stream.stream,
-        type: stream.type
+        stream: ffmpeg.stdout,
+        type: StreamType.Raw
       }
     };
   } catch (err) {
