@@ -12,7 +12,7 @@
     "register:global": "node src/register-global.js"
   },
   "dependencies": {
-    "@discordjs/voice": "^0.18.0",
+    "@discordjs/voice": "^0.19.2",
     "@google/generative-ai": "^0.24.1",
     "@notionhq/client": "^5.22.0",
     "body-parser": "^2.2.2",
