@@ -168,11 +168,7 @@ async function playTrack(client, guildId, track) {
   session.paused = false;
 
   try {
-    const { src } = await createStreamResource(track.url, track.streamUrl);
-    const resource = createAudioResource(src.stream, {
-      inputType: src.type,
-      inlineVolume: true
-    });
+    const resource = await createStreamResource(track.url, track.streamUrl);
     resource.volume?.setVolume(session.volume);
 
     session.player.play(resource);
