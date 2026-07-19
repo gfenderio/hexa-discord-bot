@@ -40,7 +40,7 @@ export async function resolveTrack(query, requestedById) {
     info = await youtubedl(target, dlOptions);
   } catch (err) {
     console.error('[YOUTUBE-DL ERROR]', err);
-    throw new Error('Gagal memproses lagu dari YouTube. Jika ini terus terjadi, tambahkan file cookies.txt di server.');
+    throw new Error(`Gagal memproses lagu dari YouTube: ${err.message}`);
   }
 
   const videoData = info.entries ? info.entries[0] : info;
