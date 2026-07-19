@@ -1,63 +1,68 @@
-import { videoInfo, search } from 'youtube-ext';
+import youtubedl from 'youtube-dl-exec';
 import { spawn } from 'node:child_process';
 import ffmpegPath from 'ffmpeg-static';
 import { StreamType } from '@discordjs/voice';
 
 function isValidUrl(str) {
   try {
-    const u = new URL(str);
-    return u.hostname.includes('youtube.com') || u.hostname.includes('youtu.be');
+    new URL(str);
+    return true;
   } catch (e) {
     return false;
   }
 }
 
 /**
- * Search YouTube and resolve to a track object.
- * Uses youtube-ext to bypass bot blocks.
+ * Search YouTube and resolve to a track object using yt-dlp.
  */
 export async function resolveTrack(query, requestedById) {
-  let url = query.trim();
+  let target = query.trim();
 
-  // If it's not a valid YouTube URL, search for it
-  if (!isValidUrl(url)) {
-    const res = await search(url, { filterType: 'video' });
-    if (!res || !res.videos || res.videos.length === 0) {
-      throw new Error('Lagu tidak ketemu di YouTube.');
-    }
-    url = res.videos[0].url;
+  if (!isValidUrl(target)) {
+    target = `ytsearch1:${target}`;
   }
 
-  const info = await videoInfo(url);
+  const info = await youtubedl(target, {
+    dumpJson: true,
+    noWarnings: true,
+    noCallHome: true,
+    noCheckCertificate: true,
+    preferFreeFormats: true,
+    youtubeSkipDashManifest: true,
+    referer: 'https://www.youtube.com/'
+  });
 
-  if (!info || !info.stream) {
-    throw new Error('Gagal memuat stream. Mungkin diblokir oleh YouTube atau video age-restricted.');
+  const videoData = info.entries ? info.entries[0] : info;
+
+  if (!videoData) {
+    throw new Error('Lagu tidak ketemu atau diblokir.');
   }
 
-  const adaptiveFormats = info.stream.adaptiveFormats || [];
-  const audioFormats = adaptiveFormats.filter(f => f.mimeType && f.mimeType.includes('audio'));
+  const formats = videoData.formats || [];
+  const audioFormats = formats.filter(f => f.acodec !== 'none' && f.vcodec === 'none');
+  
   let streamUrl = null;
   if (audioFormats.length > 0) {
+    // Sort by audio bitrate descending
+    audioFormats.sort((a, b) => (b.abr || 0) - (a.abr || 0));
     streamUrl = audioFormats[0].url;
-  } else if (info.stream.formats && info.stream.formats.length > 0) {
-    streamUrl = info.stream.formats[0].url;
+  } else if (formats.length > 0) {
+    streamUrl = formats[0].url;
   } else {
+    streamUrl = videoData.url;
+  }
+
+  if (!streamUrl) {
     throw new Error('Tidak ada stream audio yang valid dari YouTube.');
   }
 
-  // Parse duration
-  let durationSec = 0;
-  if (info.duration && info.duration.lengthSeconds) {
-    durationSec = parseInt(info.duration.lengthSeconds, 10);
-  }
-
   return {
-    title: info.title ?? 'Unknown',
-    url: info.url ?? url,
+    title: videoData.title ?? 'Unknown',
+    url: videoData.webpage_url ?? videoData.url ?? query,
     streamUrl,
-    durationSec,
-    channel: info.channel?.name ?? 'YouTube',
-    thumbnail: info.thumbnails?.[info.thumbnails.length - 1]?.url ?? null,
+    durationSec: videoData.duration || 0,
+    channel: videoData.uploader ?? videoData.channel ?? 'YouTube',
+    thumbnail: videoData.thumbnail ?? null,
     requestedBy: requestedById
   };
 }
