@@ -25,7 +25,6 @@ export async function resolveTrack(query, requestedById) {
     dumpJson: true,
     noWarnings: true,
     noCheckCertificate: true,
-    format: 'bestaudio/best',
     referer: 'https://www.youtube.com/'
   };
 
