@@ -1,9 +1,18 @@
-import youtubedl from 'youtube-dl-exec';
-import { spawn } from 'node:child_process';
-import ffmpegPath from 'ffmpeg-static';
+import play from 'play-dl';
 import { StreamType } from '@discordjs/voice';
-import fs from 'node:fs';
-import path from 'node:path';
+
+let scInitialized = false;
+
+async function initSC() {
+  if (scInitialized) return;
+  try {
+    const id = await play.getFreeClientID();
+    await play.setToken({ soundcloud: { client_id: id } });
+    scInitialized = true;
+  } catch (e) {
+    console.error('Failed to init SC:', e);
+  }
+}
 
 function isValidUrl(str) {
   try {
@@ -15,115 +24,57 @@ function isValidUrl(str) {
 }
 
 /**
- * Search YouTube and resolve to a track object using yt-dlp.
+ * Resolve track natively using play-dl (SoundCloud source).
+ * Extremely fast and bypasses YouTube blocks completely.
  */
 export async function resolveTrack(query, requestedById) {
   let target = query.trim();
 
-  if (!isValidUrl(target)) {
-    target = `ytsearch1:${target}`;
+  if (isValidUrl(target) && (target.includes('youtube') || target.includes('youtu.be'))) {
+    throw new Error('Sistem YouTube sedang ditutup sementara (diblokir anti-bot). Silakan putar menggunakan teks/judul lagu saja (contoh: /play green day).');
   }
 
-  const dlOptions = {
-    dumpJson: true,
-    noWarnings: true,
-    noCheckCertificate: true,
-    preferFreeFormats: true,
-    referer: 'https://www.youtube.com/'
-  };
+  await initSC();
 
-  // Plan B: Use cookies.txt if exists
-  const cookiePath = path.join(process.cwd(), 'cookies.txt');
-  if (fs.existsSync(cookiePath)) {
-    dlOptions.cookies = cookiePath;
+  let trackData = null;
+
+  if (isValidUrl(target) && target.includes('soundcloud')) {
+    try {
+      const info = await play.soundcloud(target);
+      trackData = info;
+    } catch(e) {}
   }
 
-  let info;
-  try {
-    info = await youtubedl(target, dlOptions);
-  } catch (err) {
-    // Plan C: Fallback to SoundCloud if YouTube asks for Sign In
-    if (err.message && err.message.includes('Sign in to confirm')) {
-      if (target.startsWith('ytsearch1:')) {
-        console.log('[MUSIC] YouTube blocked, falling back to SoundCloud for query:', target);
-        const scTarget = target.replace('ytsearch1:', 'scsearch1:');
-        info = await youtubedl(scTarget, dlOptions);
-      } else {
-        throw new Error('Video diblokir YouTube (Membutuhkan Sign in). Tambahkan cookies.txt di root folder server.');
-      }
-    } else {
-      throw err;
+  // Jika berupa teks atau bukan URL soundcloud yang valid, search di SoundCloud
+  if (!trackData) {
+    const results = await play.search(target, { source: { soundcloud: 'tracks' }, limit: 1 });
+    if (!results || results.length === 0) {
+      throw new Error('Lagu tidak ditemukan di database.');
     }
-  }
-
-  const videoData = info.entries ? info.entries[0] : info;
-
-  if (!videoData) {
-    throw new Error('Lagu tidak ketemu atau diblokir.');
-  }
-
-  const formats = videoData.formats || [];
-  const audioFormats = formats.filter(f => f.acodec !== 'none' && f.vcodec === 'none');
-  
-  let streamUrl = null;
-  if (audioFormats.length > 0) {
-    // Sort by audio bitrate descending
-    audioFormats.sort((a, b) => (b.abr || 0) - (a.abr || 0));
-    streamUrl = audioFormats[0].url;
-  } else if (formats.length > 0) {
-    streamUrl = formats[0].url;
-  } else {
-    streamUrl = videoData.url;
-  }
-
-  if (!streamUrl) {
-    throw new Error('Tidak ada stream audio yang valid dari sumber ini.');
+    trackData = results[0];
   }
 
   return {
-    title: videoData.title ?? 'Unknown',
-    url: videoData.webpage_url ?? videoData.url ?? query,
-    streamUrl,
-    durationSec: videoData.duration || 0,
-    channel: videoData.uploader ?? videoData.channel ?? 'Unknown',
-    thumbnail: videoData.thumbnail ?? null,
+    title: trackData.name || trackData.title || 'Unknown',
+    url: trackData.url,
+    streamUrl: trackData.url,
+    durationSec: trackData.durationInSec || 0,
+    channel: trackData.user?.name || trackData.channel?.name || 'SoundCloud',
+    thumbnail: trackData.thumbnail || trackData.thumbnails?.[0]?.url || null,
     requestedBy: requestedById
   };
 }
 
 export async function createStreamResource(trackUrl, streamUrl) {
-  if (!streamUrl) throw new Error('Stream URL missing');
-
-  // Pass URL directly to FFmpeg instead of piping via Node.js
-  const ffmpeg = spawn(ffmpegPath, [
-    '-reconnect', '1',
-    '-reconnect_streamed', '1',
-    '-reconnect_delay_max', '5',
-    '-i', streamUrl,
-    '-analyzeduration', '0',
-    '-loglevel', 'error',
-    '-f', 's16le',
-    '-ar', '48000',
-    '-ac', '2',
-    'pipe:1'
-  ], {
-    stdio: ['ignore', 'pipe', 'pipe'],
-    windowsHide: true
-  });
-
-  // Handle errors gracefully
-  ffmpeg.stderr.on('data', (d) => {
-    console.error('[FFMPEG STDERR]', d.toString().trim());
-  });
-
-  ffmpeg.on('error', (err) => {
-    console.error('ffmpeg process error:', err.message);
-  });
-
-  return {
-    src: {
-      stream: ffmpeg.stdout,
-      type: StreamType.Raw
-    }
-  };
+  try {
+    const stream = await play.stream(trackUrl);
+    return {
+      src: {
+        stream: stream.stream,
+        type: stream.type
+      }
+    };
+  } catch (e) {
+    throw new Error('Gagal mengekstrak audio: ' + e.message);
+  }
 }
