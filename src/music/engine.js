@@ -110,13 +110,25 @@ async function ensureVoice(client, interaction, session) {
 
 
 
-    await entersState(session.connection, VoiceConnectionStatus.Ready, 20_000);
+    try {
+      await entersState(session.connection, VoiceConnectionStatus.Ready, 20_000);
+    } catch (err) {
+      session.connection.destroy();
+      session.connection = null;
+      throw new Error('Koneksi suara Discord RTO (Timeout). Silakan coba jalankan command `/play` lagi.');
+    }
   } else if (session.connection.joinConfig.channelId !== voiceChannel.id) {
     session.connection.rejoin({
       channelId: voiceChannel.id,
       selfDeaf: true
     });
-    await entersState(session.connection, VoiceConnectionStatus.Ready, 20_000);
+    try {
+      await entersState(session.connection, VoiceConnectionStatus.Ready, 20_000);
+    } catch (err) {
+      session.connection.destroy();
+      session.connection = null;
+      throw new Error('Gagal pindah Voice Channel (Timeout). Silakan coba lagi.');
+    }
   }
 
   if (!session.player) {
