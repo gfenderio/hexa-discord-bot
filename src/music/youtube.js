@@ -30,7 +30,12 @@ export async function resolveTrack(query, requestedById) {
 
   const info = await videoInfo(url);
 
-  const audioFormats = info.stream.adaptiveFormats.filter(f => f.mimeType && f.mimeType.includes('audio'));
+  if (!info || !info.stream) {
+    throw new Error('Gagal memuat stream. Mungkin diblokir oleh YouTube atau video age-restricted.');
+  }
+
+  const adaptiveFormats = info.stream.adaptiveFormats || [];
+  const audioFormats = adaptiveFormats.filter(f => f.mimeType && f.mimeType.includes('audio'));
   let streamUrl = null;
   if (audioFormats.length > 0) {
     streamUrl = audioFormats[0].url;
